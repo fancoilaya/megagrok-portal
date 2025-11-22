@@ -16,22 +16,30 @@ export default function Home(){
         </section>
 
         <section className="grid" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:18}}>
-          <div className="panel">
+          <a href="/telegram-rpg" className="panel" style={{textDecoration:'none',color:'inherit'}}>
             <h3>Telegram RPG</h3>
-            <p>Integrates with the MegaGrok bot to track XP and evolutions.</p>
-          </div>
+            <p>Play the MegaGrok Telegram bot: GrowMyGrok, Hop Ritual, Fight, Evolutions, GrokDex, and leaderboard. Weekly leaderboard snapshots live in the bot — Top Grok receives a weekly airdrop.</p>
+          </a>
+
           <div className="panel">
-            <h3>Weekly Airdrops</h3>
-            <p>Leaderboard snapshots determine token & NFT rewards.</p>
+            <h3>NFTs (Coming Soon)</h3>
+            <p>A cosmic NFT collection tied to Grok evolutions, comic panels, and lore collectibles — utility for holders to be announced.</p>
           </div>
-          <div className="panel">
+
+          <a href="/comics" className="panel" style={{textDecoration:'none',color:'inherit'}}>
             <h3>Comic Universe</h3>
-            <p>Living comic that the community directs each week.</p>
-          </div>
+            <p>Living comic that the community directs each week — updated pages, chapter list, and community votes.</p>
+          </a>
+
           <div className="panel">
             <h3>Meme Coin</h3>
-            <p>CA incoming — tokenomics, vesting, and airdrop schedule live on Tokenomics page.</p>
+            <p>CA incoming — the MEMECOIN will power the MegaGrok economy. Contract Announcement (CA) coming soon.</p>
           </div>
+
+          <a href="/tokenomics" className="panel" style={{gridColumn:'1 / -1', textDecoration:'none', color:'inherit'}}>
+            <h3>Tokenomics</h3>
+            <p>Explore MEMECOIN supply, distribution, utility, and airdrop mechanics. CA timeline and governance details will be posted here.</p>
+          </a>
         </section>
       </main>
     </div>
