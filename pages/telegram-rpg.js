@@ -25,22 +25,8 @@ export default function TelegramRPG(){
         </div>
 
         <div className="panel" style={{marginTop:12}}>
-          <h3>Progression & Evolutions</h3>
-          <p>Groks evolve through tiers: Tadpole → Hopper → Ascended. XP unlocks evolutions and cosmetic rewards. Certain milestones unlock comic cameos and NFT eligibility (future).</p>
-        </div>
-
-        <div className="panel" style={{marginTop:12}}>
           <h3>Weekly Airdrops & Rewards</h3>
           <p>Each week the bot snapshots the leaderboard. The Top Grok receives a weekly airdrop (token or NFT). Additional rewards include OG roles, comic-panel appearances, and in-lore advantages. Rules and eligibility will be posted here and in the bot’s pinned messages.</p>
-        </div>
-
-        <div className="panel" style={{marginTop:12}}>
-          <h3>Tips & Best Practices</h3>
-          <ul>
-            <li>Do the Hop Ritual daily to compound XP gains.</li>
-            <li>Join group events and boss raids for bonus XP.</li>
-            <li>Link your profile and follow rules for airdrop eligibility.</li>
-          </ul>
         </div>
 
         <div style={{marginTop:18}}>
