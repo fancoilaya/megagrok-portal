@@ -2,7 +2,6 @@ import Header from '../components/Header'
 import Countdown from '../components/Countdown'
 
 export default function Home(){
-  // example target date for CA launch
   const caDate = new Date()
   caDate.setDate(caDate.getDate() + 14) // two weeks from now
 
@@ -53,20 +52,6 @@ export default function Home(){
             >
               Join the Telegram Community →
             </a>
-          </div>
-        </section>
-
-        {/* START HERE SECTION */}
-        <section style={{marginBottom:18}}>
-          <h3 style={{marginBottom:8}}>New to MegaGrok? Start here</h3>
-          <div className="panel start-box">
-            <div className="start-step">1</div>
-            <div>
-              <strong>Open the Telegram bot</strong>
-              <div style={{opacity:0.9}}>
-                Search <code>@MegaGrokBot</code> and send <code>/start</code>.
-              </div>
-            </div>
           </div>
         </section>
 
