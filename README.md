@@ -1,15 +1,10 @@
-# MegaGrok Site (Mock Next.js Project)
+MegaGrok Site - Ready Project
 
-This is a minimal scaffold for the MegaGrok Metaverse website.
-It includes:
-- Pages: Home, GrokDex, Leaderboard, Comics, Tokenomics
-- Components: Header, Countdown
-- Mock APIs: /api/grokdex, /api/leaderboard, /api/countdown
-- Public: cover1.jpg (uploaded cover used as hero background)
+This Next.js scaffold contains the updated UI: hero, panels, responsive CSS, Header, Footer,
+and pages: index, telegram-rpg, comics, tokenomics.
 
 To run locally:
-1. `npm install`
-2. `npm run dev`
-(This project targets Next.js 15 per user request; adjust versions as needed.)
+  npm install
+  npm run dev
 
-NOTE: The uploaded comic cover was copied from `/mnt/data/Cover1.jpg` into /public/cover1.jpg
+Ensure public/cover1.jpg is present (included).
