@@ -1,10 +1,13 @@
-MegaGrok Site - Ready Project
+MegaGrok Site (Production-ready)
 
-This Next.js scaffold contains the updated UI: hero, panels, responsive CSS, Header, Footer,
-and pages: index, telegram-rpg, comics, tokenomics.
+This Next.js scaffold includes full website updates for the MegaGrok Metaverse:
+- Home, MegaForge, RPG Systems, GrokDex, Comics, Tokenomics, Roadmap, Posters, NFTs pages
+- Components: Header, Footer, Countdown, RoadmapComic, PosterHero
+- API placeholders for leaderboard and grokdex
+- Public assets: cover1.jpg, poster_megapush.png
 
 To run locally:
   npm install
   npm run dev
 
-Ensure public/cover1.jpg is present (included).
+Deploy: push to GitHub and connect to Vercel (Build Command: npm run build)
