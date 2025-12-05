@@ -1,27 +1,25 @@
 import Header from '../components/Header'
-export default function GrokDex({data}) {
+
+const sample = [
+  {id:1,name:'Grok (Tadpole)',tier:1,rarity:'Common',hp:20},
+  {id:2,name:'HopGoblin',tier:2,rarity:'Rare',hp:60},
+  {id:3,name:'Ascended',tier:3,rarity:'Legendary',hp:200},
+]
+
+export default function GrokDex(){
   return (
     <div>
       <Header />
-      <main className="container">
+      <main className='container'>
         <h2>GrokDex</h2>
-        <p>Index of creatures (mock data from API)</p>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12}}>
-          <div className="panel">
-            <h4>Grok (Tadpole)</h4>
-            <div>Type: Amphibian</div>
-            <div>Rarity: Common</div>
-          </div>
-          <div className="panel">
-            <h4>Hopper</h4>
-            <div>Type: Amphibian</div>
-            <div>Rarity: Rare</div>
-          </div>
-          <div className="panel">
-            <h4>Ascended</h4>
-            <div>Type: Cosmic</div>
-            <div>Rarity: Legendary</div>
-          </div>
+        <div className='grid-three' style={{marginTop:12}}>
+          {sample.map(s => (
+            <div key={s.id} className='panel'>
+              <h4>{s.name}</h4>
+              <div>Tier: {s.tier} • {s.rarity}</div>
+              <div>HP: {s.hp}</div>
+            </div>
+          ))}
         </div>
       </main>
     </div>
