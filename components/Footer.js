@@ -3,7 +3,7 @@ export default function Footer(){
     <footer className="site-footer container">
       <div>© {new Date().getFullYear()} MegaGrok — All rights reserved</div>
       <div>
-        <a href="https://t.me/MegaGrokBot" target="_blank" rel="noreferrer">Telegram Bot</a> · <a href="/tokenomics">Tokenomics</a>
+        <a href="https://t.me/megagrok" target="_blank" rel="noreferrer">Telegram</a> · <a href="https://twitter.com" target="_blank" rel="noreferrer">X</a>
       </div>
     </footer>
   )
