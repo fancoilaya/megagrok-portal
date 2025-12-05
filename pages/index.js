@@ -17,7 +17,7 @@ export default function Home(){
             <a href="/telegram-rpg" className="cta-primary">Start Playing →</a>
             <a href="https://t.me/megagrok" className="cta-secondary" target="_blank" rel="noreferrer">Join Telegram</a>
           </div>
-          <div style={{marginTop:12}}><Countdown target={caDate.toISOString()} /></div>
+          <div style={{marginTop:12, fontSize:18, fontWeight:700, color:'#ffd27a'}}>CA Coming Soon</div>
         </section>
 
         <section style={{marginTop:18}}>
