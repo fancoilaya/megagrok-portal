@@ -1,13 +1,13 @@
-MegaGrok Site (Production-ready)
+MegaGrok Metaverse — FULL WEBSITE (FINAL)
 
-This Next.js scaffold includes full website updates for the MegaGrok Metaverse:
-- Home, MegaForge, RPG Systems, GrokDex, Comics, Tokenomics, Roadmap, Posters, NFTs pages
-- Components: Header, Footer, Countdown, RoadmapComic, PosterHero
-- API placeholders for leaderboard and grokdex
-- Public assets: cover1.jpg, poster_megapush.png
+Includes:
+- Telegram RPG (Unified UI, Evolutions, PvE, PvP, Leaderboards)
+- Weekly Airdrops (Evolution Leaderboard)
+- Arena PvP, Live PvP, Seasonal PvP Tournaments
+- MegaForge (Free + VIP)
+- Comics, NFTs, Tokenomics ($MegaGrok)
+- Roadmap updated
 
-To run locally:
-  npm install
-  npm run dev
-
-Deploy: push to GitHub and connect to Vercel (Build Command: npm run build)
+Deploy:
+npm install
+npm run build
