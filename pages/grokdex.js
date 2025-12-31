@@ -1,7 +1,7 @@
 import Header from '../components/Header'
 
 /**
- * GrokDex — Website Reference
+ * GrokDex — Websi te Reference
  * Mirrors the canonical mobs.py database (read-only).
  * This page is informational and reflects the live RPG logic.
  */
