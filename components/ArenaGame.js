@@ -1,17 +1,19 @@
 import { useRef, useEffect, useState } from 'react'
+import ArenaControls from './ArenaControls'
 
-export default function ArenaGame({ onGameOver, input }) {
+export default function ArenaGame({ onGameOver, input, setInput }) {
+  const containerRef = useRef(null)
   const canvasRef = useRef(null)
 
-  // Core entities
+  // Entities
   const player = useRef({ x: 400, y: 250 })
   const enemies = useRef([])
   const bullets = useRef([])
 
-  // Input
+  // Keyboard
   const keys = useRef({})
 
-  // Timers / refs
+  // Game state refs
   const hpRef = useRef(100)
   const lastHitRef = useRef(0)
   const lastAttackRef = useRef(0)
@@ -58,7 +60,7 @@ export default function ArenaGame({ onGameOver, input }) {
     const ctx = canvas.getContext('2d')
     let running = true
 
-    /* ---------------- WAVE SPAWN ---------------- */
+    /* ---------------- SPAWN WAVE ---------------- */
     function spawnWave() {
       enemies.current = []
       waveActiveRef.current = true
@@ -89,8 +91,8 @@ export default function ArenaGame({ onGameOver, input }) {
       enemies.current.forEach(e => {
         const d = Math.hypot(e.x - player.current.x, e.y - player.current.y)
         if (d < bestD) {
-          bestD = d
           best = e
+          bestD = d
         }
       })
       return best
@@ -128,7 +130,6 @@ export default function ArenaGame({ onGameOver, input }) {
           setCountdown(countdownRef.current)
           countdownTimerRef.current = 0
         }
-
         if (countdownRef.current <= 0) {
           countdownRef.current = 3
           setCountdown(3)
@@ -240,12 +241,16 @@ export default function ArenaGame({ onGameOver, input }) {
     /* ---------------- INPUT LISTENERS ---------------- */
     window.addEventListener('keydown', e => {
       keys.current[e.key] = true
-      if (e.code === 'Space') input.attack = true
+      if (e.code === 'Space') {
+        setInput(i => ({ ...i, attack: true }))
+      }
     })
 
     window.addEventListener('keyup', e => {
       keys.current[e.key] = false
-      if (e.code === 'Space') input.attack = false
+      if (e.code === 'Space') {
+        setInput(i => ({ ...i, attack: false }))
+      }
     })
 
     window.addEventListener('mousedown', () => attack(performance.now()))
@@ -254,10 +259,18 @@ export default function ArenaGame({ onGameOver, input }) {
       running = false
       document.body.style.overflow = ''
     }
-  }, [onGameOver, input])
+  }, [onGameOver, input, setInput])
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div
+      ref={containerRef}
+      style={{
+        position: 'relative',
+        width: '100%',
+        maxWidth: 800,
+        margin: '0 auto'
+      }}
+    >
       <div style={{ marginBottom: 6 }}>
         ❤️ {hp} &nbsp; 🌊 Wave {wave} &nbsp; 💀 {kills}
         {!waveActiveRef.current && <div>Next wave in {countdown}</div>}
@@ -268,9 +281,16 @@ export default function ArenaGame({ onGameOver, input }) {
         width={800}
         height={500}
         style={{
+          display: 'block',
           touchAction: 'none',
           userSelect: 'none'
         }}
+      />
+
+      {/* MOBILE CONTROLS (BOUND TO ARENA) */}
+      <ArenaControls
+        setInput={setInput}
+        containerRef={containerRef}
       />
     </div>
   )
