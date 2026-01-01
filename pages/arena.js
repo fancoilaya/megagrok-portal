@@ -4,20 +4,12 @@ import Footer from '../components/Footer'
 import ArenaGame from '../components/ArenaGame'
 import ArenaLeaderboard from '../components/ArenaLeaderboard'
 
-
 export default function Arena() {
-  const [mode, setMode] = useState('idle') // idle | playing | gameover
+  const [mode, setMode] = useState('idle')
   const [score, setScore] = useState(null)
 
   const [name, setName] = useState('')
   const [wallet, setWallet] = useState('')
-
-  // Unified input state (PC + Mobile)
-  const [input, setInput] = useState({
-    dx: 0,
-    dy: 0,
-    attack: false
-  })
 
   async function submitScore() {
     if (!name || !wallet || score === null) return
@@ -39,22 +31,19 @@ export default function Arena() {
       <Header />
 
       <main className="container">
-        {/* HERO */}
         <section className="hero">
           <h1>MEGAGROK ARENA</h1>
-          <p>Endless waves. Boss every 5 rounds. Survive.</p>
+          <p>Endless waves. Survive.</p>
         </section>
 
         <div className="grid-two">
-          {/* LEFT PANEL */}
           <div className="panel">
             {mode === 'idle' && (
               <>
                 <h3>Enter the Arena</h3>
                 <p>
-                  🖥 PC: WASD / Arrows + Space  
-                  <br />
-                  📱 Mobile: Joystick + Attack button
+                  🖥 PC: WASD / Arrows + Space<br />
+                  📱 Mobile: Drag to move, tap to attack
                 </p>
 
                 <button
@@ -67,18 +56,12 @@ export default function Arena() {
             )}
 
             {mode === 'playing' && (
-              <>
-                <ArenaGame
-                  input={input}
-                  onGameOver={(finalScore) => {
-                    setScore(finalScore)
-                    setMode('gameover')
-                  }}
-                />
-
-                {/* Mobile controls overlay */}
-                <ArenaControls setInput={setInput} />
-              </>
+              <ArenaGame
+                onGameOver={(finalScore) => {
+                  setScore(finalScore)
+                  setMode('gameover')
+                }}
+              />
             )}
 
             {mode === 'gameover' && (
@@ -117,7 +100,6 @@ export default function Arena() {
             )}
           </div>
 
-          {/* RIGHT PANEL */}
           <div className="panel">
             <ArenaLeaderboard />
           </div>
