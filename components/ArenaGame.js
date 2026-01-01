@@ -7,6 +7,8 @@ export default function ArenaGame({ onGameOver, input }) {
   const enemies = useRef([])
   const bullets = useRef([])
 
+  const keys = useRef({})
+
   const hpRef = useRef(100)
   const lastHitRef = useRef(0)
   const lastAttackRef = useRef(0)
@@ -30,46 +32,31 @@ export default function ArenaGame({ onGameOver, input }) {
     function spawnWave() {
       enemies.current = []
       const w = waveRef.current
-      const boss = w % 5 === 0
+      const isBoss = w % 5 === 0
 
-      let count = 3 + w
-      let hpBase = 30 + w * 10
-      let speed = 0.8 + w * 0.05
+      const baseCount = isBoss ? 1 : Math.min(4 + w, 10)
+      const baseHp = isBoss ? 300 + w * 60 : 40 + w * 12
 
-      if (w >= 6) count += 3          // swarm jump
-      if (w >= 8) hpBase += 40        // tank mobs
-
-      if (boss) {
+      for (let i = 0; i < baseCount; i++) {
         enemies.current.push({
-          x: 100,
-          y: 250,
-          hp: 300 + w * 80,
-          r: 32,
-          speed: 0.6,
-          boss: true
+          x: Math.random() * 760 + 20,
+          y: Math.random() * 460 + 20,
+          hp: baseHp,
+          r: isBoss ? 28 : 16,
+          speed: isBoss ? 0.45 : Math.min(0.6 + w * 0.05, 1.2),
+          boss: isBoss
         })
-      } else {
-        for (let i = 0; i < count; i++) {
-          enemies.current.push({
-            x: Math.random() * 800,
-            y: Math.random() * 500,
-            hp: hpBase,
-            r: 16,
-            speed,
-            boss: false
-          })
-        }
       }
     }
 
     function closestEnemy() {
       let best = null
-      let dMin = Infinity
+      let bestD = Infinity
       enemies.current.forEach(e => {
         const d = Math.hypot(e.x - player.current.x, e.y - player.current.y)
-        if (d < dMin) {
-          dMin = d
+        if (d < bestD) {
           best = e
+          bestD = d
         }
       })
       return best
@@ -87,8 +74,8 @@ export default function ArenaGame({ onGameOver, input }) {
       bullets.current.push({
         x: player.current.x,
         y: player.current.y,
-        vx: (dx / d) * 8,
-        vy: (dy / d) * 8,
+        vx: (dx / d) * 7,
+        vy: (dy / d) * 7,
         dmg: 12
       })
 
@@ -113,15 +100,27 @@ export default function ArenaGame({ onGameOver, input }) {
         }
       }
 
-      // Movement
-      const speed = 4
-      player.current.x += (input.dx || 0) * speed
-      player.current.y += (input.dy || 0) * speed
+      // ---- PLAYER MOVEMENT ----
+      const speed = 3.2
+
+      // PC keyboard
+      if (keys.current['w'] || keys.current['ArrowUp']) player.current.y -= speed
+      if (keys.current['s'] || keys.current['ArrowDown']) player.current.y += speed
+      if (keys.current['a'] || keys.current['ArrowLeft']) player.current.x -= speed
+      if (keys.current['d'] || keys.current['ArrowRight']) player.current.x += speed
+
+      // Mobile joystick (normalized & clamped)
+      const jx = Math.max(-1, Math.min(1, input.dx || 0))
+      const jy = Math.max(-1, Math.min(1, input.dy || 0))
+
+      if (Math.abs(jx) > 0.15 || Math.abs(jy) > 0.15) {
+        player.current.x += jx * speed * 2.2
+        player.current.y += jy * speed * 2.2
+      }
 
       player.current.x = Math.max(20, Math.min(780, player.current.x))
       player.current.y = Math.max(20, Math.min(480, player.current.y))
 
-      // Attack
       if (input.attack) attack(ts)
 
       ctx.clearRect(0, 0, 800, 500)
@@ -133,7 +132,7 @@ export default function ArenaGame({ onGameOver, input }) {
       ctx.fill()
 
       // Bullets
-      ctx.fillStyle = '#fff'
+      ctx.fillStyle = '#ffffff'
       bullets.current.forEach(b => {
         b.x += b.vx
         b.y += b.vy
@@ -156,8 +155,8 @@ export default function ArenaGame({ onGameOver, input }) {
         ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2)
         ctx.fill()
 
-        if (d < e.r + 12 && ts - lastHitRef.current > 700) {
-          hpRef.current -= e.boss ? 20 : 10
+        if (d < e.r + 12 && ts - lastHitRef.current > 800) {
+          hpRef.current -= e.boss ? 20 : 8
           setHp(hpRef.current)
           lastHitRef.current = ts
         }
@@ -196,7 +195,23 @@ export default function ArenaGame({ onGameOver, input }) {
     }
 
     requestAnimationFrame(loop)
-    return () => (document.body.style.overflow = '')
+
+    // Keyboard listeners
+    window.addEventListener('keydown', e => {
+      keys.current[e.key] = true
+      if (e.code === 'Space') input.attack = true
+    })
+    window.addEventListener('keyup', e => {
+      keys.current[e.key] = false
+      if (e.code === 'Space') input.attack = false
+    })
+
+    window.addEventListener('mousedown', () => attack(performance.now()))
+
+    return () => {
+      running = false
+      document.body.style.overflow = ''
+    }
   }, [onGameOver, input])
 
   return (
