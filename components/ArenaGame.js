@@ -3,29 +3,30 @@ import { useRef, useEffect, useState } from 'react'
 export default function ArenaGame({ onGameOver }) {
   const canvasRef = useRef(null)
 
-  // Core entities
+  // GAME STATE (REFS ONLY)
   const player = useRef({ x: 400, y: 250 })
   const enemies = useRef([])
   const bullets = useRef([])
+  const waveRef = useRef(1)
+  const hpRef = useRef(100)
 
-  // Input
   const keys = useRef({})
-  const lastTapRef = useRef(0)
-
-  // State
-  const [wave, setWave] = useState(1)
-  const [hp, setHp] = useState(100)
-  const [kills, setKills] = useState(0)
-
   const lastAttackRef = useRef(0)
 
+  // UI STATE (DISPLAY ONLY)
+  const [waveUI, setWaveUI] = useState(1)
+  const [hpUI, setHpUI] = useState(100)
+  const [kills, setKills] = useState(0)
+
   useEffect(() => {
-    /* ================= RESET ================= */
+    // HARD INIT (RUNS ONCE)
     player.current = { x: 400, y: 250 }
     enemies.current = []
     bullets.current = []
-    setWave(1)
-    setHp(100)
+    waveRef.current = 1
+    hpRef.current = 100
+    setWaveUI(1)
+    setHpUI(100)
     setKills(0)
 
     document.body.style.overflow = 'hidden'
@@ -34,9 +35,9 @@ export default function ArenaGame({ onGameOver }) {
     const ctx = canvas.getContext('2d')
     let running = true
 
-    /* ================= SPAWN ================= */
-    function spawnWave(w) {
+    function spawnWave() {
       enemies.current = []
+      const w = waveRef.current
       const count = Math.min(3 + w, 8)
 
       for (let i = 0; i < count; i++) {
@@ -44,22 +45,21 @@ export default function ArenaGame({ onGameOver }) {
           x: Math.random() * 760 + 20,
           y: Math.random() * 460 + 20,
           hp: 20 + w * 6,
-          speed: 0.5 + w * 0.05,
+          speed: 0.6 + w * 0.04,
           r: 14
         })
       }
     }
 
-    spawnWave(1)
+    spawnWave()
 
-    /* ================= ATTACK ================= */
     function attack(ts) {
       if (ts - lastAttackRef.current < 350) return
       if (enemies.current.length === 0) return
 
-      const target = enemies.current[0]
-      const dx = target.x - player.current.x
-      const dy = target.y - player.current.y
+      const e = enemies.current[0]
+      const dx = e.x - player.current.x
+      const dy = e.y - player.current.y
       const d = Math.hypot(dx, dy)
 
       bullets.current.push({
@@ -72,11 +72,10 @@ export default function ArenaGame({ onGameOver }) {
       lastAttackRef.current = ts
     }
 
-    /* ================= LOOP ================= */
     function loop(ts) {
       if (!running) return
 
-      // Movement (PC)
+      // MOVEMENT (PC)
       const speed = 3
       if (keys.current['w'] || keys.current['ArrowUp']) player.current.y -= speed
       if (keys.current['s'] || keys.current['ArrowDown']) player.current.y += speed
@@ -88,14 +87,14 @@ export default function ArenaGame({ onGameOver }) {
 
       ctx.clearRect(0, 0, 800, 500)
 
-      // Player
+      // PLAYER
       ctx.fillStyle = '#ff7a00'
       ctx.beginPath()
       ctx.arc(player.current.x, player.current.y, 14, 0, Math.PI * 2)
       ctx.fill()
 
-      // Bullets
-      ctx.fillStyle = '#ffffff'
+      // BULLETS
+      ctx.fillStyle = '#fff'
       bullets.current.forEach(b => {
         b.x += b.vx
         b.y += b.vy
@@ -104,7 +103,7 @@ export default function ArenaGame({ onGameOver }) {
         ctx.fill()
       })
 
-      // Enemies
+      // ENEMIES
       enemies.current.forEach(e => {
         const dx = player.current.x - e.x
         const dy = player.current.y - e.y
@@ -119,11 +118,11 @@ export default function ArenaGame({ onGameOver }) {
         ctx.fill()
 
         if (d < e.r + 12) {
-          setHp(h => Math.max(0, h - 0.15))
+          hpRef.current -= 0.15
         }
       })
 
-      // Hits
+      // COLLISIONS
       bullets.current.forEach(b => {
         enemies.current.forEach(e => {
           if (Math.hypot(b.x - e.x, b.y - e.y) < e.r) {
@@ -142,19 +141,20 @@ export default function ArenaGame({ onGameOver }) {
         return true
       })
 
-      // Next wave
+      // WAVE COMPLETE (ONCE)
       if (enemies.current.length === 0) {
-        setWave(w => {
-          const next = w + 1
-          spawnWave(next)
-          return next
-        })
+        waveRef.current += 1
+        setWaveUI(waveRef.current)
+        spawnWave()
       }
 
-      // Death
-      if (hp <= 0) {
+      // SYNC UI
+      setHpUI(Math.max(0, Math.floor(hpRef.current)))
+
+      // GAME OVER
+      if (hpRef.current <= 0) {
         running = false
-        onGameOver(wave * 100 + kills * 10)
+        onGameOver(waveRef.current * 100 + kills * 10)
         return
       }
 
@@ -163,45 +163,34 @@ export default function ArenaGame({ onGameOver }) {
 
     requestAnimationFrame(loop)
 
-    /* ================= INPUT ================= */
+    // INPUT
     window.addEventListener('keydown', e => {
       keys.current[e.key] = true
       if (e.code === 'Space') attack(performance.now())
     })
-
     window.addEventListener('keyup', e => {
       keys.current[e.key] = false
     })
 
-    // Mobile: tap to move, double-tap to attack
     canvas.addEventListener('touchstart', e => {
       e.preventDefault()
       const t = e.touches[0]
       const rect = canvas.getBoundingClientRect()
-
-      const x = ((t.clientX - rect.left) / rect.width) * 800
-      const y = ((t.clientY - rect.top) / rect.height) * 500
-
-      player.current.x = x
-      player.current.y = y
-
-      const now = Date.now()
-      if (now - lastTapRef.current < 300) {
-        attack(performance.now())
-      }
-      lastTapRef.current = now
+      player.current.x = ((t.clientX - rect.left) / rect.width) * 800
+      player.current.y = ((t.clientY - rect.top) / rect.height) * 500
+      attack(performance.now())
     })
 
     return () => {
       running = false
       document.body.style.overflow = ''
     }
-  }, [onGameOver, hp, wave, kills])
+  }, [onGameOver])
 
   return (
     <>
       <div style={{ marginBottom: 6 }}>
-        ❤️ {Math.floor(hp)} &nbsp; 🌊 Wave {wave} &nbsp; 💀 {kills}
+        ❤️ {hpUI} &nbsp; 🌊 Wave {waveUI} &nbsp; 💀 {kills}
       </div>
 
       <canvas
