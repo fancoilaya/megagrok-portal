@@ -1,108 +1,63 @@
 import { useRef, useEffect, useState } from 'react'
-import ArenaControls from './ArenaControls'
 
-export default function ArenaGame({ onGameOver, input, setInput }) {
-  const containerRef = useRef(null)
+export default function ArenaGame({ onGameOver }) {
   const canvasRef = useRef(null)
 
-  // Entities
+  // Core entities
   const player = useRef({ x: 400, y: 250 })
   const enemies = useRef([])
   const bullets = useRef([])
 
-  // Keyboard
+  // Input
   const keys = useRef({})
+  const lastTapRef = useRef(0)
 
-  // Game state refs
-  const hpRef = useRef(100)
-  const lastHitRef = useRef(0)
-  const lastAttackRef = useRef(0)
-
-  const waveRef = useRef(1)
-  const waveActiveRef = useRef(false)
-
-  const countdownRef = useRef(3)
-  const countdownTimerRef = useRef(0)
-
-  // UI state
-  const [hp, setHp] = useState(100)
+  // State
   const [wave, setWave] = useState(1)
-  const [countdown, setCountdown] = useState(3)
+  const [hp, setHp] = useState(100)
   const [kills, setKills] = useState(0)
 
+  const lastAttackRef = useRef(0)
+
   useEffect(() => {
-    /* ---------------- HARD RESET ON START ---------------- */
+    /* ================= RESET ================= */
     player.current = { x: 400, y: 250 }
     enemies.current = []
     bullets.current = []
-
-    hpRef.current = 100
-    lastHitRef.current = 0
-    lastAttackRef.current = 0
-
-    waveRef.current = 1
-    waveActiveRef.current = false
-    countdownRef.current = 3
-    countdownTimerRef.current = 0
-
-    setHp(100)
     setWave(1)
-    setCountdown(3)
+    setHp(100)
     setKills(0)
 
-    // Lock browser behavior
     document.body.style.overflow = 'hidden'
-    document.body.style.userSelect = 'none'
-    document.body.style.webkitUserSelect = 'none'
-    document.body.style.webkitTouchCallout = 'none'
 
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
     let running = true
 
-    /* ---------------- SPAWN WAVE ---------------- */
-    function spawnWave() {
+    /* ================= SPAWN ================= */
+    function spawnWave(w) {
       enemies.current = []
-      waveActiveRef.current = true
-
-      const w = waveRef.current
-      const isBoss = w % 5 === 0
-
-      const count = isBoss ? 1 : Math.min(4 + w, 10)
-      const hpBase = isBoss ? 300 + w * 60 : 40 + w * 12
-      const speed = isBoss ? 0.45 : Math.min(0.6 + w * 0.05, 1.2)
+      const count = Math.min(3 + w, 8)
 
       for (let i = 0; i < count; i++) {
         enemies.current.push({
           x: Math.random() * 760 + 20,
           y: Math.random() * 460 + 20,
-          hp: hpBase,
-          r: isBoss ? 28 : 16,
-          speed,
-          boss: isBoss
+          hp: 20 + w * 6,
+          speed: 0.5 + w * 0.05,
+          r: 14
         })
       }
     }
 
-    /* ---------------- HELPERS ---------------- */
-    function closestEnemy() {
-      let best = null
-      let bestD = Infinity
-      enemies.current.forEach(e => {
-        const d = Math.hypot(e.x - player.current.x, e.y - player.current.y)
-        if (d < bestD) {
-          best = e
-          bestD = d
-        }
-      })
-      return best
-    }
+    spawnWave(1)
 
+    /* ================= ATTACK ================= */
     function attack(ts) {
-      if (ts - lastAttackRef.current < 300) return
-      const target = closestEnemy()
-      if (!target) return
+      if (ts - lastAttackRef.current < 350) return
+      if (enemies.current.length === 0) return
 
+      const target = enemies.current[0]
       const dx = target.x - player.current.x
       const dy = target.y - player.current.y
       const d = Math.hypot(dx, dy)
@@ -110,57 +65,27 @@ export default function ArenaGame({ onGameOver, input, setInput }) {
       bullets.current.push({
         x: player.current.x,
         y: player.current.y,
-        vx: (dx / d) * 7,
-        vy: (dy / d) * 7,
-        dmg: 12
+        vx: (dx / d) * 6,
+        vy: (dy / d) * 6
       })
 
       lastAttackRef.current = ts
     }
 
-    /* ---------------- GAME LOOP ---------------- */
+    /* ================= LOOP ================= */
     function loop(ts) {
       if (!running) return
 
-      // Countdown between waves
-      if (!waveActiveRef.current) {
-        countdownTimerRef.current += 0.016
-        if (countdownTimerRef.current >= 1) {
-          countdownRef.current--
-          setCountdown(countdownRef.current)
-          countdownTimerRef.current = 0
-        }
-        if (countdownRef.current <= 0) {
-          countdownRef.current = 3
-          setCountdown(3)
-          spawnWave()
-        }
-      }
-
-      /* -------- PLAYER MOVEMENT -------- */
-      const speed = 3.2
-
-      // PC keyboard
+      // Movement (PC)
+      const speed = 3
       if (keys.current['w'] || keys.current['ArrowUp']) player.current.y -= speed
       if (keys.current['s'] || keys.current['ArrowDown']) player.current.y += speed
       if (keys.current['a'] || keys.current['ArrowLeft']) player.current.x -= speed
       if (keys.current['d'] || keys.current['ArrowRight']) player.current.x += speed
 
-      // Mobile joystick (velocity only)
-      const jx = Math.max(-1, Math.min(1, input.dx || 0))
-      const jy = Math.max(-1, Math.min(1, input.dy || 0))
-
-      if (Math.abs(jx) > 0.15 || Math.abs(jy) > 0.15) {
-        player.current.x += jx * speed * 2
-        player.current.y += jy * speed * 2
-      }
-
       player.current.x = Math.max(20, Math.min(780, player.current.x))
       player.current.y = Math.max(20, Math.min(480, player.current.y))
 
-      if (input.attack) attack(ts)
-
-      /* -------- RENDER -------- */
       ctx.clearRect(0, 0, 800, 500)
 
       // Player
@@ -188,23 +113,21 @@ export default function ArenaGame({ onGameOver, input, setInput }) {
         e.x += (dx / d) * e.speed
         e.y += (dy / d) * e.speed
 
-        ctx.fillStyle = e.boss ? '#ff0000' : '#ff4444'
+        ctx.fillStyle = '#ff4444'
         ctx.beginPath()
         ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2)
         ctx.fill()
 
-        if (d < e.r + 12 && ts - lastHitRef.current > 800) {
-          hpRef.current -= e.boss ? 20 : 8
-          setHp(hpRef.current)
-          lastHitRef.current = ts
+        if (d < e.r + 12) {
+          setHp(h => Math.max(0, h - 0.15))
         }
       })
 
-      // Bullet hits
+      // Hits
       bullets.current.forEach(b => {
         enemies.current.forEach(e => {
           if (Math.hypot(b.x - e.x, b.y - e.y) < e.r) {
-            e.hp -= b.dmg
+            e.hp -= 10
             b.dead = true
           }
         })
@@ -219,17 +142,19 @@ export default function ArenaGame({ onGameOver, input, setInput }) {
         return true
       })
 
-      // Wave cleared → increment ONCE
-      if (waveActiveRef.current && enemies.current.length === 0) {
-        waveActiveRef.current = false
-        waveRef.current += 1
-        setWave(waveRef.current)
+      // Next wave
+      if (enemies.current.length === 0) {
+        setWave(w => {
+          const next = w + 1
+          spawnWave(next)
+          return next
+        })
       }
 
       // Death
-      if (hpRef.current <= 0) {
+      if (hp <= 0) {
         running = false
-        onGameOver(waveRef.current * 100 + kills * 10)
+        onGameOver(wave * 100 + kills * 10)
         return
       }
 
@@ -238,42 +163,45 @@ export default function ArenaGame({ onGameOver, input, setInput }) {
 
     requestAnimationFrame(loop)
 
-    /* ---------------- INPUT LISTENERS ---------------- */
+    /* ================= INPUT ================= */
     window.addEventListener('keydown', e => {
       keys.current[e.key] = true
-      if (e.code === 'Space') {
-        setInput(i => ({ ...i, attack: true }))
-      }
+      if (e.code === 'Space') attack(performance.now())
     })
 
     window.addEventListener('keyup', e => {
       keys.current[e.key] = false
-      if (e.code === 'Space') {
-        setInput(i => ({ ...i, attack: false }))
-      }
     })
 
-    window.addEventListener('mousedown', () => attack(performance.now()))
+    // Mobile: tap to move, double-tap to attack
+    canvas.addEventListener('touchstart', e => {
+      e.preventDefault()
+      const t = e.touches[0]
+      const rect = canvas.getBoundingClientRect()
+
+      const x = ((t.clientX - rect.left) / rect.width) * 800
+      const y = ((t.clientY - rect.top) / rect.height) * 500
+
+      player.current.x = x
+      player.current.y = y
+
+      const now = Date.now()
+      if (now - lastTapRef.current < 300) {
+        attack(performance.now())
+      }
+      lastTapRef.current = now
+    })
 
     return () => {
       running = false
       document.body.style.overflow = ''
     }
-  }, [onGameOver, input, setInput])
+  }, [onGameOver, hp, wave, kills])
 
   return (
-    <div
-      ref={containerRef}
-      style={{
-        position: 'relative',
-        width: '100%',
-        maxWidth: 800,
-        margin: '0 auto'
-      }}
-    >
+    <>
       <div style={{ marginBottom: 6 }}>
-        ❤️ {hp} &nbsp; 🌊 Wave {wave} &nbsp; 💀 {kills}
-        {!waveActiveRef.current && <div>Next wave in {countdown}</div>}
+        ❤️ {Math.floor(hp)} &nbsp; 🌊 Wave {wave} &nbsp; 💀 {kills}
       </div>
 
       <canvas
@@ -281,17 +209,13 @@ export default function ArenaGame({ onGameOver, input, setInput }) {
         width={800}
         height={500}
         style={{
+          width: '100%',
+          maxWidth: 800,
           display: 'block',
           touchAction: 'none',
           userSelect: 'none'
         }}
       />
-
-      {/* MOBILE CONTROLS (BOUND TO ARENA) */}
-      <ArenaControls
-        setInput={setInput}
-        containerRef={containerRef}
-      />
-    </div>
+    </>
   )
 }
