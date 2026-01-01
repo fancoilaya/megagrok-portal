@@ -1,26 +1,24 @@
-import { sql } from '@vercel/postgres'
-import { checkDailyReset } from '../../../lib/arenaDb'
+import { kv } from '@vercel/kv'
 
 export default async function handler(req, res) {
-  await checkDailyReset()
+  try {
+    const today = new Date().toISOString().slice(0, 10)
+    const key = `arena:daily:${today}`
 
-  const today = await sql`
-    SELECT display_name, score
-    FROM arena_scores
-    ORDER BY score DESC
-    LIMIT 10
-  `
+    // Top 25 scores, highest first
+    const raw = await kv.zrange(key, 0, 24, { rev: true })
 
-  const history = await sql`
-    SELECT date, rank, display_name, score
-    FROM arena_daily_winners
-    ORDER BY date DESC, rank ASC
-    LIMIT 10
-  `
+    const leaderboard = raw.map((item, index) => {
+      const data = JSON.parse(item)
+      return {
+        rank: index + 1,
+        ...data
+      }
+    })
 
-  res.json({
-    today: today.rows,
-    history: history.rows
-  })
+    return res.status(200).json({ leaderboard })
+  } catch (err) {
+    console.error('Leaderboard error:', err)
+    return res.status(500).json({ error: 'Internal error' })
+  }
 }
-
