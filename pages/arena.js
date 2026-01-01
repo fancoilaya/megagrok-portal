@@ -5,7 +5,7 @@ import ArenaGame from '../components/ArenaGame'
 import ArenaLeaderboard from '../components/ArenaLeaderboard'
 
 export default function Arena() {
-  const [mode, setMode] = useState('idle') // idle | playing | gameover
+  const [mode, setMode] = useState('idle')
   const [score, setScore] = useState(null)
   const [name, setName] = useState('')
   const [wallet, setWallet] = useState('')
@@ -30,28 +30,19 @@ export default function Arena() {
       <Header />
 
       <main className="container">
-        {/* HERO */}
         <section className="hero">
           <h1>MEGAGROK ARENA</h1>
           <p>Endless survival. One Grok. Pure skill.</p>
         </section>
 
         <div className="grid-two">
-          {/* LEFT PANEL */}
           <div className="panel">
             {mode === 'idle' && (
               <>
-                <h3>Ready to enter?</h3>
-                <p>
-                  You start with full HP.  
-                  Enemies grow stronger the longer you survive.
-                </p>
-
-                <button
-                  className="cta-primary"
-                  onClick={() => setMode('playing')}
-                >
-                  ▶ START ARENA
+                <h3>Enter the Arena</h3>
+                <p>Move with WASD / Arrow keys. Grok attacks automatically.</p>
+                <button className="cta-primary" onClick={() => setMode('playing')}>
+                  ▶ START RUN
                 </button>
               </>
             )}
@@ -73,18 +64,15 @@ export default function Arena() {
                 <input
                   placeholder="Display name"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={e => setName(e.target.value)}
                 />
                 <input
                   placeholder="Wallet address"
                   value={wallet}
-                  onChange={(e) => setWallet(e.target.value)}
+                  onChange={e => setWallet(e.target.value)}
                 />
 
-                <button
-                  className="cta-primary"
-                  onClick={submitScore}
-                >
+                <button className="cta-primary" onClick={submitScore}>
                   Submit Score
                 </button>
 
@@ -101,7 +89,6 @@ export default function Arena() {
             )}
           </div>
 
-          {/* RIGHT PANEL */}
           <div className="panel">
             <ArenaLeaderboard />
           </div>
