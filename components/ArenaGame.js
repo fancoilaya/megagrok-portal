@@ -10,10 +10,15 @@ export default function ArenaGame({ onGameOver }) {
 
   const hpRef = useRef(100)
   const lastHitRef = useRef(0)
+  const lastAttackRef = useRef(0)
 
   const [hp, setHp] = useState(100)
   const [time, setTime] = useState(0)
   const [kills, setKills] = useState(0)
+
+  // Mobile joystick
+  const touchStart = useRef(null)
+  const moveVector = useRef({ x: 0, y: 0 })
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -24,20 +29,40 @@ export default function ArenaGame({ onGameOver }) {
     bullets.current = []
     hpRef.current = 100
     lastHitRef.current = 0
+    lastAttackRef.current = 0
 
     function spawnEnemy() {
+      if (enemies.current.length > 6) return
+
       enemies.current.push({
         x: Math.random() * 800,
         y: Math.random() * 500,
-        hp: 3,
+        hp: 20,              // MUCH higher HP
         speed: 0.6 + time * 0.01
       })
     }
 
-    function shoot() {
-      if (enemies.current.length === 0) return
+    function closestEnemy() {
+      let best = null
+      let bestDist = Infinity
 
-      const target = enemies.current[0]
+      enemies.current.forEach(e => {
+        const d = Math.hypot(e.x - player.current.x, e.y - player.current.y)
+        if (d < bestDist) {
+          best = e
+          bestDist = d
+        }
+      })
+
+      return best
+    }
+
+    function attack(ts) {
+      if (ts - lastAttackRef.current < 400) return
+
+      const target = closestEnemy()
+      if (!target) return
+
       const dx = target.x - player.current.x
       const dy = target.y - player.current.y
       const d = Math.hypot(dx, dy)
@@ -45,25 +70,30 @@ export default function ArenaGame({ onGameOver }) {
       bullets.current.push({
         x: player.current.x,
         y: player.current.y,
-        vx: (dx / d) * 6,
-        vy: (dy / d) * 6
+        vx: (dx / d) * 8,
+        vy: (dy / d) * 8,
+        dmg: 5
       })
-    }
 
-    const shootInterval = setInterval(shoot, 400)
+      lastAttackRef.current = ts
+    }
 
     function loop(ts) {
       if (!running) return
 
       setTime(t => t + 0.016)
-      if (Math.random() < 0.03) spawnEnemy()
+      if (Math.random() < 0.02) spawnEnemy()
 
-      // Movement
+      // Keyboard movement
       const speed = 4
       if (keys.current['w'] || keys.current['ArrowUp']) player.current.y -= speed
       if (keys.current['s'] || keys.current['ArrowDown']) player.current.y += speed
       if (keys.current['a'] || keys.current['ArrowLeft']) player.current.x -= speed
       if (keys.current['d'] || keys.current['ArrowRight']) player.current.x += speed
+
+      // Mobile joystick movement
+      player.current.x += moveVector.current.x * 4
+      player.current.y += moveVector.current.y * 4
 
       player.current.x = Math.max(10, Math.min(790, player.current.x))
       player.current.y = Math.max(10, Math.min(490, player.current.y))
@@ -73,7 +103,7 @@ export default function ArenaGame({ onGameOver }) {
       // Player
       ctx.fillStyle = '#ff7a00'
       ctx.beginPath()
-      ctx.arc(player.current.x, player.current.y, 10, 0, Math.PI * 2)
+      ctx.arc(player.current.x, player.current.y, 12, 0, Math.PI * 2)
       ctx.fill()
 
       // Bullets
@@ -82,7 +112,7 @@ export default function ArenaGame({ onGameOver }) {
         b.x += b.vx
         b.y += b.vy
         ctx.beginPath()
-        ctx.arc(b.x, b.y, 3, 0, Math.PI * 2)
+        ctx.arc(b.x, b.y, 4, 0, Math.PI * 2)
         ctx.fill()
       })
 
@@ -97,11 +127,11 @@ export default function ArenaGame({ onGameOver }) {
         e.y += (dy / d) * e.speed
 
         ctx.beginPath()
-        ctx.arc(e.x, e.y, 10, 0, Math.PI * 2)
+        ctx.arc(e.x, e.y, 14, 0, Math.PI * 2)
         ctx.fill()
 
-        // Damage with i-frames (500ms)
-        if (d < 18 && ts - lastHitRef.current > 500) {
+        // Damage with i-frames
+        if (d < 20 && ts - lastHitRef.current > 600) {
           hpRef.current -= 10
           setHp(hpRef.current)
           lastHitRef.current = ts
@@ -112,8 +142,8 @@ export default function ArenaGame({ onGameOver }) {
       bullets.current.forEach(b => {
         enemies.current.forEach(e => {
           const d = Math.hypot(b.x - e.x, b.y - e.y)
-          if (d < 12) {
-            e.hp -= 1
+          if (d < 16) {
+            e.hp -= b.dmg
             b.dead = true
           }
         })
@@ -131,8 +161,7 @@ export default function ArenaGame({ onGameOver }) {
 
       if (hpRef.current <= 0) {
         running = false
-        clearInterval(shootInterval)
-        onGameOver(Math.floor(time * 5 + kills))
+        onGameOver(Math.floor(time * 5 + kills * 10))
         return
       }
 
@@ -141,22 +170,38 @@ export default function ArenaGame({ onGameOver }) {
 
     requestAnimationFrame(loop)
 
-    function keyDown(e) {
-      keys.current[e.key] = true
-    }
+    // Keyboard
+    window.addEventListener('keydown', e => keys.current[e.key] = true)
+    window.addEventListener('keyup', e => keys.current[e.key] = false)
 
-    function keyUp(e) {
-      keys.current[e.key] = false
-    }
+    // Manual attack (desktop + mobile)
+    window.addEventListener('mousedown', e => attack(performance.now()))
+    window.addEventListener('keydown', e => {
+      if (e.code === 'Space') attack(performance.now())
+    })
 
-    window.addEventListener('keydown', keyDown)
-    window.addEventListener('keyup', keyUp)
+    // Touch controls
+    canvas.addEventListener('touchstart', e => {
+      touchStart.current = e.touches[0]
+    })
+
+    canvas.addEventListener('touchmove', e => {
+      if (!touchStart.current) return
+      const t = e.touches[0]
+      moveVector.current = {
+        x: (t.clientX - touchStart.current.clientX) / 50,
+        y: (t.clientY - touchStart.current.clientY) / 50
+      }
+    })
+
+    canvas.addEventListener('touchend', e => {
+      touchStart.current = null
+      moveVector.current = { x: 0, y: 0 }
+      attack(performance.now()) // tap attack
+    })
 
     return () => {
       running = false
-      clearInterval(shootInterval)
-      window.removeEventListener('keydown', keyDown)
-      window.removeEventListener('keyup', keyUp)
     }
   }, [onGameOver])
 
