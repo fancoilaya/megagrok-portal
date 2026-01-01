@@ -6,8 +6,10 @@ export default function ArenaGame({ onGameOver }) {
   const player = useRef({ x: 400, y: 250 })
   const enemies = useRef([])
   const bullets = useRef([])
-
   const keys = useRef({})
+
+  const hpRef = useRef(100)
+  const lastHitRef = useRef(0)
 
   const [hp, setHp] = useState(100)
   const [time, setTime] = useState(0)
@@ -18,17 +20,23 @@ export default function ArenaGame({ onGameOver }) {
     const ctx = canvas.getContext('2d')
     let running = true
 
+    enemies.current = []
+    bullets.current = []
+    hpRef.current = 100
+    lastHitRef.current = 0
+
     function spawnEnemy() {
       enemies.current.push({
         x: Math.random() * 800,
         y: Math.random() * 500,
         hp: 3,
-        speed: 0.4 + time * 0.01
+        speed: 0.6 + time * 0.01
       })
     }
 
     function shoot() {
       if (enemies.current.length === 0) return
+
       const target = enemies.current[0]
       const dx = target.x - player.current.x
       const dy = target.y - player.current.y
@@ -44,7 +52,7 @@ export default function ArenaGame({ onGameOver }) {
 
     const shootInterval = setInterval(shoot, 400)
 
-    function loop() {
+    function loop(ts) {
       if (!running) return
 
       setTime(t => t + 0.016)
@@ -62,14 +70,14 @@ export default function ArenaGame({ onGameOver }) {
 
       ctx.clearRect(0, 0, 800, 500)
 
-      // Player (Grok placeholder)
+      // Player
       ctx.fillStyle = '#ff7a00'
       ctx.beginPath()
       ctx.arc(player.current.x, player.current.y, 10, 0, Math.PI * 2)
       ctx.fill()
 
       // Bullets
-      ctx.fillStyle = '#fff'
+      ctx.fillStyle = '#ffffff'
       bullets.current.forEach(b => {
         b.x += b.vx
         b.y += b.vy
@@ -92,9 +100,11 @@ export default function ArenaGame({ onGameOver }) {
         ctx.arc(e.x, e.y, 10, 0, Math.PI * 2)
         ctx.fill()
 
-        if (d < 18) {
-          setHp(h => h - 1)
-          e.hp = 0
+        // Damage with i-frames (500ms)
+        if (d < 18 && ts - lastHitRef.current > 500) {
+          hpRef.current -= 10
+          setHp(hpRef.current)
+          lastHitRef.current = ts
         }
       })
 
@@ -119,7 +129,7 @@ export default function ArenaGame({ onGameOver }) {
         return true
       })
 
-      if (hp <= 0) {
+      if (hpRef.current <= 0) {
         running = false
         clearInterval(shootInterval)
         onGameOver(Math.floor(time * 5 + kills))
@@ -129,7 +139,7 @@ export default function ArenaGame({ onGameOver }) {
       requestAnimationFrame(loop)
     }
 
-    loop()
+    requestAnimationFrame(loop)
 
     function keyDown(e) {
       keys.current[e.key] = true
@@ -148,7 +158,7 @@ export default function ArenaGame({ onGameOver }) {
       window.removeEventListener('keydown', keyDown)
       window.removeEventListener('keyup', keyUp)
     }
-  }, [hp, time, kills, onGameOver])
+  }, [onGameOver])
 
   return (
     <>
