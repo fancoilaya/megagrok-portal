@@ -3,7 +3,7 @@ import Header from '../components/Header'
 import Footer from '../components/Footer'
 import ArenaGame from '../components/ArenaGame'
 import ArenaLeaderboard from '../components/ArenaLeaderboard'
-import ArenaControls from '../components/ArenaControls'
+
 
 export default function Arena() {
   const [mode, setMode] = useState('idle') // idle | playing | gameover
