@@ -23,7 +23,29 @@ export default function ArenaGame({ onGameOver, input }) {
   const [kills, setKills] = useState(0)
 
   useEffect(() => {
+    // 🔒 Lock mobile browser behavior
     document.body.style.overflow = 'hidden'
+    document.body.style.userSelect = 'none'
+    document.body.style.webkitUserSelect = 'none'
+    document.body.style.webkitTouchCallout = 'none'
+
+    // 🔄 HARD RESET (this fixes wave 63 bug)
+    player.current = { x: 400, y: 250 }
+    enemies.current = []
+    bullets.current = []
+
+    hpRef.current = 100
+    lastHitRef.current = 0
+    lastAttackRef.current = 0
+
+    waveRef.current = 1
+    countdownRef.current = 3
+    countdownTimerRef.current = 0
+
+    setHp(100)
+    setWave(1)
+    setCountdown(3)
+    setKills(0)
 
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
@@ -34,16 +56,17 @@ export default function ArenaGame({ onGameOver, input }) {
       const w = waveRef.current
       const isBoss = w % 5 === 0
 
-      const baseCount = isBoss ? 1 : Math.min(4 + w, 10)
-      const baseHp = isBoss ? 300 + w * 60 : 40 + w * 12
+      const count = isBoss ? 1 : Math.min(4 + w, 10)
+      const hpBase = isBoss ? 300 + w * 60 : 40 + w * 12
+      const speed = isBoss ? 0.45 : Math.min(0.6 + w * 0.05, 1.2)
 
-      for (let i = 0; i < baseCount; i++) {
+      for (let i = 0; i < count; i++) {
         enemies.current.push({
           x: Math.random() * 760 + 20,
           y: Math.random() * 460 + 20,
-          hp: baseHp,
+          hp: hpBase,
           r: isBoss ? 28 : 16,
-          speed: isBoss ? 0.45 : Math.min(0.6 + w * 0.05, 1.2),
+          speed,
           boss: isBoss
         })
       }
@@ -51,12 +74,12 @@ export default function ArenaGame({ onGameOver, input }) {
 
     function closestEnemy() {
       let best = null
-      let bestD = Infinity
+      let dMin = Infinity
       enemies.current.forEach(e => {
         const d = Math.hypot(e.x - player.current.x, e.y - player.current.y)
-        if (d < bestD) {
+        if (d < dMin) {
+          dMin = d
           best = e
-          bestD = d
         }
       })
       return best
@@ -100,19 +123,16 @@ export default function ArenaGame({ onGameOver, input }) {
         }
       }
 
-      // ---- PLAYER MOVEMENT ----
+      // Movement
       const speed = 3.2
 
-      // PC keyboard
       if (keys.current['w'] || keys.current['ArrowUp']) player.current.y -= speed
       if (keys.current['s'] || keys.current['ArrowDown']) player.current.y += speed
       if (keys.current['a'] || keys.current['ArrowLeft']) player.current.x -= speed
       if (keys.current['d'] || keys.current['ArrowRight']) player.current.x += speed
 
-      // Mobile joystick (normalized & clamped)
       const jx = Math.max(-1, Math.min(1, input.dx || 0))
       const jy = Math.max(-1, Math.min(1, input.dy || 0))
-
       if (Math.abs(jx) > 0.15 || Math.abs(jy) > 0.15) {
         player.current.x += jx * speed * 2.2
         player.current.y += jy * speed * 2.2
@@ -187,7 +207,7 @@ export default function ArenaGame({ onGameOver, input }) {
       }
 
       if (enemies.current.length === 0 && countdownRef.current === 3) {
-        waveRef.current++
+        waveRef.current += 1
         setWave(waveRef.current)
       }
 
@@ -196,7 +216,6 @@ export default function ArenaGame({ onGameOver, input }) {
 
     requestAnimationFrame(loop)
 
-    // Keyboard listeners
     window.addEventListener('keydown', e => {
       keys.current[e.key] = true
       if (e.code === 'Space') input.attack = true
@@ -220,7 +239,16 @@ export default function ArenaGame({ onGameOver, input }) {
         ❤️ {hp} &nbsp; 🌊 Wave {wave} &nbsp; 💀 {kills}
         {countdown < 3 && <div>Next wave in {countdown}</div>}
       </div>
-      <canvas ref={canvasRef} width={800} height={500} />
+
+      <canvas
+        ref={canvasRef}
+        width={800}
+        height={500}
+        style={{
+          touchAction: 'none',
+          userSelect: 'none'
+        }}
+      />
     </>
   )
 }
