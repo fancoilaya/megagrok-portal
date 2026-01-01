@@ -1,62 +1,86 @@
-import { useRef } from 'react'
+import { useRef, useEffect } from 'react'
 
-export default function ArenaControls({ setInput }) {
+export default function ArenaControls({ setInput, containerRef }) {
   const activeRef = useRef(false)
   const centerRef = useRef({ x: 0, y: 0 })
 
-  function onStart(e) {
+  useEffect(() => {
+    // Reset input on unmount
+    return () => {
+      setInput(i => ({ ...i, dx: 0, dy: 0, attack: false }))
+    }
+  }, [setInput])
+
+  function onTouchStart(e) {
     e.preventDefault()
+    e.stopPropagation()
+
+    if (!containerRef.current) return
+
+    const rect = containerRef.current.getBoundingClientRect()
     const t = e.touches[0]
+
     activeRef.current = true
-    centerRef.current = { x: t.clientX, y: t.clientY }
+    centerRef.current = {
+      x: t.clientX - rect.left,
+      y: t.clientY - rect.top
+    }
   }
 
-  function onMove(e) {
-    if (!activeRef.current) return
+  function onTouchMove(e) {
+    if (!activeRef.current || !containerRef.current) return
     e.preventDefault()
+    e.stopPropagation()
 
+    const rect = containerRef.current.getBoundingClientRect()
     const t = e.touches[0]
-    const dx = t.clientX - centerRef.current.x
-    const dy = t.clientY - centerRef.current.y
 
-    // normalize vector
-    const len = Math.hypot(dx, dy)
-    if (len < 10) {
+    const x = t.clientX - rect.left
+    const y = t.clientY - rect.top
+
+    const dx = x - centerRef.current.x
+    const dy = y - centerRef.current.y
+
+    const dist = Math.hypot(dx, dy)
+    const max = 40
+
+    if (dist < 6) {
       setInput(i => ({ ...i, dx: 0, dy: 0 }))
       return
     }
 
-    const nx = dx / Math.min(len, 40)
-    const ny = dy / Math.min(len, 40)
-
     setInput(i => ({
       ...i,
-      dx: Math.max(-1, Math.min(1, nx)),
-      dy: Math.max(-1, Math.min(1, ny))
+      dx: Math.max(-1, Math.min(1, dx / max)),
+      dy: Math.max(-1, Math.min(1, dy / max))
     }))
   }
 
-  function onEnd() {
+  function onTouchEnd(e) {
+    e.preventDefault()
+    e.stopPropagation()
+
     activeRef.current = false
     setInput(i => ({ ...i, dx: 0, dy: 0 }))
   }
 
   return (
     <>
-      {/* JOYSTICK */}
+      {/* JOYSTICK ZONE */}
       <div
-        onTouchStart={onStart}
-        onTouchMove={onMove}
-        onTouchEnd={onEnd}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
         style={{
           position: 'absolute',
-          bottom: 20,
-          left: 20,
-          width: 120,
-          height: 120,
+          left: 16,
+          bottom: 16,
+          width: 140,
+          height: 140,
           borderRadius: '50%',
-          background: 'rgba(255,255,255,0.12)',
-          touchAction: 'none'
+          background: 'rgba(255,255,255,0.15)',
+          touchAction: 'none',
+          userSelect: 'none'
         }}
       />
 
@@ -64,23 +88,26 @@ export default function ArenaControls({ setInput }) {
       <button
         onTouchStart={e => {
           e.preventDefault()
+          e.stopPropagation()
           setInput(i => ({ ...i, attack: true }))
         }}
         onTouchEnd={e => {
           e.preventDefault()
+          e.stopPropagation()
           setInput(i => ({ ...i, attack: false }))
         }}
         style={{
           position: 'absolute',
-          bottom: 30,
-          right: 30,
+          right: 20,
+          bottom: 20,
           width: 90,
           height: 90,
           borderRadius: '50%',
           background: '#ff7a00',
           border: 'none',
           fontSize: 28,
-          touchAction: 'none'
+          touchAction: 'none',
+          userSelect: 'none'
         }}
       >
         🔥
