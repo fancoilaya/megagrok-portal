@@ -1,74 +1,244 @@
 @import url('https://fonts.googleapis.com/css2?family=Anton&family=Nunito:wght@300;400;700&display=swap');
 
-html,body,#__next{height:100%}
-body{
-  margin:0;
+/* =========================================================
+   BASE RESET
+========================================================= */
+html,
+body,
+#__next {
+  height: 100%;
+}
+
+body {
+  margin: 0;
   font-family: 'Nunito', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial;
   background: #060414;
   color: #ffd27a;
-  -webkit-font-smoothing:antialiased;
-  line-height:1.45;
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.45;
 }
 
-.container{max-width:1200px;margin:0 auto;padding:2rem}
-
-header.site-header{display:flex;align-items:center;gap:1rem;justify-content:space-between;padding:1rem 0}
-header.site-header nav a{margin-left:14px;color:#ffd27a;text-decoration:none;font-weight:700}
-header.site-header nav a:hover{opacity:0.95;text-decoration:underline}
-
-.hero{
-  background-image: linear-gradient(rgba(6,3,18,0.6), rgba(6,3,18,0.85)), url('/cover1.jpg');
-  background-size:cover;
-  background-position:center;
-  border-radius:12px;
-  padding:3rem;
-  color:#ffd27a;
-  box-shadow: inset 0 0 120px rgba(0,0,0,0.6);
-  margin-bottom:28px;
+/* =========================================================
+   ⭐ MOBILE GAME LOCK (CRITICAL)
+   Prevents scroll, zoom, text select, tap highlight
+========================================================= */
+html,
+body {
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
 }
-.hero h1{font-family:'Anton', sans-serif;font-size:56px;margin:0 0 8px;line-height:1}
-.hero p{max-width:900px;color:#ffe7b8;margin-bottom:14px;font-size:18px}
 
-.cta-primary{background:#ff7a00;padding:12px 18px;border-radius:12px;color:#120418;font-weight:800;text-decoration:none;display:inline-block}
-.cta-secondary{margin-left:14px;color:#ffd27a;text-decoration:underline;font-weight:700}
+canvas {
+  touch-action: none;
+}
 
-.panel{
-  background: rgba(18,6,40,0.95);
-  border:6px solid #ff7a00;
-  padding:1.5rem;
-  border-radius:14px;
-  box-shadow:0 12px 50px rgba(255,106,0,0.12);
+/* =========================================================
+   LAYOUT
+========================================================= */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+/* =========================================================
+   HEADER
+========================================================= */
+header.site-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 1rem 0;
+}
+
+header.site-header nav a {
+  margin-left: 14px;
+  color: #ffd27a;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+header.site-header nav a:hover {
+  opacity: 0.95;
+  text-decoration: underline;
+}
+
+/* =========================================================
+   HERO
+========================================================= */
+.hero {
+  background-image: linear-gradient(
+      rgba(6, 3, 18, 0.6),
+      rgba(6, 3, 18, 0.85)
+    ),
+    url('/cover1.jpg');
+  background-size: cover;
+  background-position: center;
+  border-radius: 12px;
+  padding: 3rem;
+  color: #ffd27a;
+  box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.6);
+  margin-bottom: 28px;
+}
+
+.hero h1 {
+  font-family: 'Anton', sans-serif;
+  font-size: 56px;
+  margin: 0 0 8px;
+  line-height: 1;
+}
+
+.hero p {
+  max-width: 900px;
+  color: #ffe7b8;
+  margin-bottom: 14px;
+  font-size: 18px;
+}
+
+/* =========================================================
+   BUTTONS
+========================================================= */
+.cta-primary {
+  background: #ff7a00;
+  padding: 12px 18px;
+  border-radius: 12px;
+  color: #120418;
+  font-weight: 800;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.cta-secondary {
+  margin-left: 14px;
+  color: #ffd27a;
+  text-decoration: underline;
+  font-weight: 700;
+}
+
+/* =========================================================
+   PANELS
+========================================================= */
+.panel {
+  background: rgba(18, 6, 40, 0.95);
+  border: 6px solid #ff7a00;
+  padding: 1.5rem;
+  border-radius: 14px;
+  box-shadow: 0 12px 50px rgba(255, 106, 0, 0.12);
   transition: transform 220ms ease, box-shadow 220ms ease;
-  min-height:160px;
-  display:flex;
-  flex-direction:column;
+  min-height: 160px;
+  display: flex;
+  flex-direction: column;
 }
-.panel h3{margin:0 0 8px;font-size:22px;color:#ffb470}
-.panel p{margin:0;color:#ffdca8;font-size:15px}
 
-.panel:hover{
+.panel h3 {
+  margin: 0 0 8px;
+  font-size: 22px;
+  color: #ffb470;
+}
+
+.panel p {
+  margin: 0;
+  color: #ffdca8;
+  font-size: 15px;
+}
+
+.panel:hover {
   transform: translateY(-6px) scale(1.02);
-  box-shadow:0 26px 80px rgba(255,106,0,0.18);
-  cursor:pointer;
+  box-shadow: 0 26px 80px rgba(255, 106, 0, 0.18);
+  cursor: pointer;
 }
 
-.grid-two{display:grid;grid-template-columns:repeat(2,1fr);gap:22px}
-.grid-three{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-.grid-two .col-span-2{grid-column:1 / -1}
+/* =========================================================
+   GRIDS
+========================================================= */
+.grid-two {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 22px;
+}
 
-footer.site-footer{margin-top:48px;padding:28px 0;border-top:1px solid rgba(255,255,255,0.04);color:#ffd9a8;display:flex;justify-content:space-between;align-items:center}
-footer.site-footer a{color:#ffd27a;text-decoration:none}
-footer.site-footer a:hover{text-decoration:underline}
+.grid-three {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
 
-.roadmap-scroller{display:flex;gap:16px;overflow-x:auto;padding-bottom:8px}
-.roadmap-panel{min-width:320px;flex:0 0 auto}
+.grid-two .col-span-2 {
+  grid-column: 1 / -1;
+}
 
-.poster-hero{border-radius:12px;overflow:hidden;border:6px solid #ff7a00;box-shadow:0 12px 60px rgba(255,106,0,0.12)}
+/* =========================================================
+   FOOTER
+========================================================= */
+footer.site-footer {
+  margin-top: 48px;
+  padding: 28px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  color: #ffd9a8;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
 
-@media (max-width: 980px){
-  .grid-two{grid-template-columns:1fr}
-  .grid-three{grid-template-columns:1fr}
-  .hero{padding:2rem}
-  .hero h1{font-size:36px}
-  header.site-header{flex-direction:column;align-items:flex-start;gap:8px}
+footer.site-footer a {
+  color: #ffd27a;
+  text-decoration: none;
+}
+
+footer.site-footer a:hover {
+  text-decoration: underline;
+}
+
+/* =========================================================
+   EXTRA COMPONENTS
+========================================================= */
+.roadmap-scroller {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.roadmap-panel {
+  min-width: 320px;
+  flex: 0 0 auto;
+}
+
+.poster-hero {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 6px solid #ff7a00;
+  box-shadow: 0 12px 60px rgba(255, 106, 0, 0.12);
+}
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+@media (max-width: 980px) {
+  .grid-two {
+    grid-template-columns: 1fr;
+  }
+
+  .grid-three {
+    grid-template-columns: 1fr;
+  }
+
+  .hero {
+    padding: 2rem;
+  }
+
+  .hero h1 {
+    font-size: 36px;
+  }
+
+  header.site-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
 }
