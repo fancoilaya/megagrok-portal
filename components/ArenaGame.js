@@ -3,24 +3,24 @@ import { useRef, useEffect, useState } from 'react'
 export default function ArenaGame({ onGameOver }) {
   const canvasRef = useRef(null)
 
-  // -------- GAME STATE (PLAIN JS) --------
-  let player = { x: 400, y: 250 }
-  let enemies = []
-  let bullets = []
+  // -------- GAME STATE (REFS, STABLE) --------
+  const player = useRef({ x: 400, y: 250 })
+  const enemies = useRef([])
+  const bullets = useRef([])
 
-  let wave = 1
-  let hp = 100
-  let kills = 0
+  const waveRef = useRef(1)
+  const hpRef = useRef(100)
+  const killsRef = useRef(0)
 
-  let lastAttack = 0
-  let waveCleared = false
-  let countdown = 3
-  let countdownTimer = 0
+  const lastAttackRef = useRef(0)
+  const waveClearedRef = useRef(false)
+  const countdownRef = useRef(3)
+  const countdownTimerRef = useRef(0)
 
-  let moving = false
-  let moveVec = { x: 0, y: 0 }
+  const movingRef = useRef(false)
+  const moveVecRef = useRef({ x: 0, y: 0 })
 
-  // -------- UI STATE (REACT, READ-ONLY) --------
+  // -------- UI STATE --------
   const [uiWave, setUiWave] = useState(1)
   const [uiHp, setUiHp] = useState(100)
   const [uiKills, setUiKills] = useState(0)
@@ -34,82 +34,87 @@ export default function ArenaGame({ onGameOver }) {
     document.body.style.overflow = 'hidden'
 
     function syncUI() {
-      setUiWave(wave)
-      setUiHp(Math.max(0, Math.floor(hp)))
-      setUiKills(kills)
-      setUiCountdown(waveCleared ? countdown : null)
+      setUiWave(waveRef.current)
+      setUiHp(Math.max(0, Math.floor(hpRef.current)))
+      setUiKills(killsRef.current)
+      setUiCountdown(
+        waveClearedRef.current ? countdownRef.current : null
+      )
     }
 
     function spawnWave() {
-      enemies = []
-      const count = Math.min(3 + wave, 8)
+      enemies.current = []
+      const w = waveRef.current
+      const count = Math.min(3 + w, 8)
+
       for (let i = 0; i < count; i++) {
-        enemies.push({
+        enemies.current.push({
           x: Math.random() * 760 + 20,
           y: Math.random() * 460 + 20,
-          hp: 25 + wave * 6,
-          speed: 0.6 + wave * 0.05,
+          hp: 25 + w * 6,
+          speed: 0.6 + w * 0.05,
           r: 14
         })
       }
-      waveCleared = false
+
+      waveClearedRef.current = false
       syncUI()
     }
 
     spawnWave()
 
     function attack(ts) {
-      if (ts - lastAttack < 400) return
-      if (!enemies.length) return
+      if (ts - lastAttackRef.current < 400) return
+      if (!enemies.current.length) return
 
-      const e = enemies[0]
-      const dx = e.x - player.x
-      const dy = e.y - player.y
+      const e = enemies.current[0]
+      const dx = e.x - player.current.x
+      const dy = e.y - player.current.y
       const d = Math.hypot(dx, dy)
 
-      bullets.push({
-        x: player.x,
-        y: player.y,
+      bullets.current.push({
+        x: player.current.x,
+        y: player.current.y,
         vx: (dx / d) * 6,
         vy: (dy / d) * 6
       })
 
-      lastAttack = ts
+      lastAttackRef.current = ts
     }
 
     function loop(ts) {
       if (!running) return
 
-      // -------- MOVEMENT --------
-      if (moving) {
-        player.x += moveVec.x * 3
-        player.y += moveVec.y * 3
+      // -------- MOVE --------
+      if (movingRef.current) {
+        player.current.x += moveVecRef.current.x * 3
+        player.current.y += moveVecRef.current.y * 3
       }
 
-      player.x = Math.max(20, Math.min(780, player.x))
-      player.y = Math.max(20, Math.min(480, player.y))
+      player.current.x = Math.max(20, Math.min(780, player.current.x))
+      player.current.y = Math.max(20, Math.min(480, player.current.y))
 
       // -------- UPDATE --------
-      bullets.forEach(b => {
+      bullets.current.forEach(b => {
         b.x += b.vx
         b.y += b.vy
       })
 
-      enemies.forEach(e => {
-        const dx = player.x - e.x
-        const dy = player.y - e.y
+      enemies.current.forEach(e => {
+        const dx = player.current.x - e.x
+        const dy = player.current.y - e.y
         const d = Math.hypot(dx, dy)
 
         e.x += (dx / d) * e.speed
         e.y += (dy / d) * e.speed
 
         if (d < e.r + 12) {
-          hp -= 0.15
+          hpRef.current -= 0.15
         }
       })
 
-      bullets.forEach(b => {
-        enemies.forEach(e => {
+      bullets.current.forEach(b => {
+        enemies.current.forEach(e => {
           if (Math.hypot(b.x - e.x, b.y - e.y) < e.r) {
             e.hp -= 10
             b.dead = true
@@ -117,32 +122,35 @@ export default function ArenaGame({ onGameOver }) {
         })
       })
 
-      bullets = bullets.filter(b => !b.dead)
-      enemies = enemies.filter(e => {
+      bullets.current = bullets.current.filter(b => !b.dead)
+      enemies.current = enemies.current.filter(e => {
         if (e.hp <= 0) {
-          kills++
+          killsRef.current++
           return false
         }
         return true
       })
 
       // -------- WAVE LOGIC --------
-      if (enemies.length === 0 && !waveCleared) {
-        waveCleared = true
-        countdown = 3
-        countdownTimer = 0
+      if (
+        enemies.current.length === 0 &&
+        !waveClearedRef.current
+      ) {
+        waveClearedRef.current = true
+        countdownRef.current = 3
+        countdownTimerRef.current = 0
         syncUI()
       }
 
-      if (waveCleared) {
-        countdownTimer += 1 / 60
-        if (countdownTimer >= 1) {
-          countdown--
-          countdownTimer = 0
+      if (waveClearedRef.current) {
+        countdownTimerRef.current += 1 / 60
+        if (countdownTimerRef.current >= 1) {
+          countdownRef.current--
+          countdownTimerRef.current = 0
           syncUI()
         }
-        if (countdown <= 0) {
-          wave++
+        if (countdownRef.current <= 0) {
+          waveRef.current++
           spawnWave()
         }
       }
@@ -152,28 +160,30 @@ export default function ArenaGame({ onGameOver }) {
 
       ctx.fillStyle = '#ff7a00'
       ctx.beginPath()
-      ctx.arc(player.x, player.y, 14, 0, Math.PI * 2)
+      ctx.arc(player.current.x, player.current.y, 14, 0, Math.PI * 2)
       ctx.fill()
 
       ctx.fillStyle = '#fff'
-      bullets.forEach(b => {
+      bullets.current.forEach(b => {
         ctx.beginPath()
         ctx.arc(b.x, b.y, 4, 0, Math.PI * 2)
         ctx.fill()
       })
 
       ctx.fillStyle = '#ff4444'
-      enemies.forEach(e => {
+      enemies.current.forEach(e => {
         ctx.beginPath()
         ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2)
         ctx.fill()
       })
 
-      // -------- GAME OVER --------
       syncUI()
-      if (hp <= 0) {
+
+      if (hpRef.current <= 0) {
         running = false
-        onGameOver(wave * 100 + kills * 10)
+        onGameOver(
+          waveRef.current * 100 + killsRef.current * 10
+        )
         return
       }
 
@@ -187,12 +197,14 @@ export default function ArenaGame({ onGameOver }) {
     // PC
     const keys = {}
     setInterval(() => {
-      moveVec = { x: 0, y: 0 }
-      if (keys['w'] || keys['ArrowUp']) moveVec.y -= 1
-      if (keys['s'] || keys['ArrowDown']) moveVec.y += 1
-      if (keys['a'] || keys['ArrowLeft']) moveVec.x -= 1
-      if (keys['d'] || keys['ArrowRight']) moveVec.x += 1
-      moving = moveVec.x !== 0 || moveVec.y !== 0
+      moveVecRef.current = { x: 0, y: 0 }
+      if (keys['w'] || keys['ArrowUp']) moveVecRef.current.y -= 1
+      if (keys['s'] || keys['ArrowDown']) moveVecRef.current.y += 1
+      if (keys['a'] || keys['ArrowLeft']) moveVecRef.current.x -= 1
+      if (keys['d'] || keys['ArrowRight']) moveVecRef.current.x += 1
+      movingRef.current =
+        moveVecRef.current.x !== 0 ||
+        moveVecRef.current.y !== 0
     }, 16)
 
     window.addEventListener('keydown', e => {
@@ -214,24 +226,23 @@ export default function ArenaGame({ onGameOver }) {
         return
       }
       lastTouch = e.touches[0]
-      moving = true
+      movingRef.current = true
     })
 
     canvas.addEventListener('touchmove', e => {
       e.preventDefault()
       if (!lastTouch) return
       const t = e.touches[0]
-      moveVec = {
+      moveVecRef.current = {
         x: (t.clientX - lastTouch.clientX) / 20,
         y: (t.clientY - lastTouch.clientY) / 20
       }
       lastTouch = t
     })
 
-    canvas.addEventListener('touchend', e => {
-      e.preventDefault()
-      moving = false
-      moveVec = { x: 0, y: 0 }
+    canvas.addEventListener('touchend', () => {
+      movingRef.current = false
+      moveVecRef.current = { x: 0, y: 0 }
       lastTouch = null
     })
 
@@ -247,7 +258,9 @@ export default function ArenaGame({ onGameOver }) {
         ❤️ {uiHp} &nbsp;
         🌊 Wave {uiWave} &nbsp;
         💀 {uiKills}
-        {uiCountdown !== null && <span> — Next wave in {uiCountdown}</span>}
+        {uiCountdown !== null && (
+          <span> — Next wave in {uiCountdown}</span>
+        )}
       </div>
 
       <canvas
