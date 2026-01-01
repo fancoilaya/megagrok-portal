@@ -3,19 +3,24 @@ import { useRef, useEffect, useState } from 'react'
 export default function ArenaGame({ onGameOver }) {
   const canvasRef = useRef(null)
 
-  // ---------------- GAME STATE (PURE JS, NO REACT) ----------------
+  // -------- PURE GAME STATE (NO REACT) --------
   let player = { x: 400, y: 250 }
   let enemies = []
   let bullets = []
+
   let wave = 1
   let hp = 100
   let kills = 0
 
+  let lastAttack = 0
+  let waveCleared = false
+  let countdown = 3
+  let countdownTimer = 0
+
   let moving = false
   let moveVec = { x: 0, y: 0 }
-  let lastAttack = 0
 
-  // UI mirrors (display only)
+  // -------- UI STATE (DISPLAY ONLY) --------
   const [, forceUpdate] = useState(0)
 
   useEffect(() => {
@@ -28,22 +33,22 @@ export default function ArenaGame({ onGameOver }) {
     function spawnWave() {
       enemies = []
       const count = Math.min(3 + wave, 8)
-
       for (let i = 0; i < count; i++) {
         enemies.push({
           x: Math.random() * 760 + 20,
           y: Math.random() * 460 + 20,
-          hp: 20 + wave * 6,
-          speed: 0.6 + wave * 0.04,
+          hp: 25 + wave * 6,
+          speed: 0.6 + wave * 0.05,
           r: 14
         })
       }
+      waveCleared = false
     }
 
     spawnWave()
 
     function attack(ts) {
-      if (ts - lastAttack < 350) return
+      if (ts - lastAttack < 400) return
       if (!enemies.length) return
 
       const e = enemies[0]
@@ -110,10 +115,23 @@ export default function ArenaGame({ onGameOver }) {
         return true
       })
 
-      // -------- NEXT WAVE (ONCE) --------
-      if (enemies.length === 0) {
-        wave++
-        spawnWave()
+      // -------- WAVE LOGIC (SAFE) --------
+      if (enemies.length === 0 && !waveCleared) {
+        waveCleared = true
+        countdown = 3
+        countdownTimer = 0
+      }
+
+      if (waveCleared) {
+        countdownTimer += 1 / 60
+        if (countdownTimer >= 1) {
+          countdown--
+          countdownTimer = 0
+        }
+        if (countdown <= 0) {
+          wave++
+          spawnWave()
+        }
       }
 
       // -------- DRAW --------
@@ -138,7 +156,7 @@ export default function ArenaGame({ onGameOver }) {
         ctx.fill()
       })
 
-      // -------- UI UPDATE (SAFE) --------
+      // -------- UI UPDATE --------
       forceUpdate(n => n + 1)
 
       if (hp <= 0) {
@@ -152,18 +170,10 @@ export default function ArenaGame({ onGameOver }) {
 
     requestAnimationFrame(loop)
 
-    // ---------------- INPUT ----------------
+    // -------- INPUT --------
 
     // PC
     const keys = {}
-    window.addEventListener('keydown', e => {
-      keys[e.key] = true
-      if (e.code === 'Space') attack(performance.now())
-    })
-    window.addEventListener('keyup', e => {
-      keys[e.key] = false
-    })
-
     setInterval(() => {
       moveVec = { x: 0, y: 0 }
       if (keys['w'] || keys['ArrowUp']) moveVec.y -= 1
@@ -173,35 +183,44 @@ export default function ArenaGame({ onGameOver }) {
       moving = moveVec.x !== 0 || moveVec.y !== 0
     }, 16)
 
-    // Mobile: drag = move, second finger tap = attack
+    window.addEventListener('keydown', e => {
+      keys[e.key] = true
+      if (e.code === 'Space') attack(performance.now())
+    })
+
+    window.addEventListener('keyup', e => {
+      keys[e.key] = false
+    })
+
+    // Mobile: drag = move, tap = attack
+    let lastTouch = null
+
     canvas.addEventListener('touchstart', e => {
       e.preventDefault()
-      if (e.touches.length === 2) {
+      if (e.touches.length > 1) {
         attack(performance.now())
         return
       }
-      const t = e.touches[0]
-      moveVec = {
-        x: (t.movementX || 0) / 10,
-        y: (t.movementY || 0) / 10
-      }
+      lastTouch = e.touches[0]
       moving = true
     })
 
     canvas.addEventListener('touchmove', e => {
       e.preventDefault()
-      if (e.touches.length !== 1) return
+      if (!lastTouch) return
       const t = e.touches[0]
       moveVec = {
-        x: (t.movementX || 0) / 10,
-        y: (t.movementY || 0) / 10
+        x: (t.clientX - lastTouch.clientX) / 20,
+        y: (t.clientY - lastTouch.clientY) / 20
       }
+      lastTouch = t
     })
 
     canvas.addEventListener('touchend', e => {
       e.preventDefault()
       moving = false
       moveVec = { x: 0, y: 0 }
+      lastTouch = null
     })
 
     return () => {
@@ -213,7 +232,10 @@ export default function ArenaGame({ onGameOver }) {
   return (
     <>
       <div style={{ marginBottom: 6 }}>
-        ❤️ {Math.max(0, Math.floor(hp))} &nbsp; 🌊 Wave {wave} &nbsp; 💀 {kills}
+        ❤️ {Math.max(0, Math.floor(hp))} &nbsp;
+        🌊 Wave {wave} &nbsp;
+        💀 {kills}
+        {waveCleared && <span> — Next wave in {countdown}</span>}
       </div>
 
       <canvas
