@@ -16,6 +16,7 @@ export default function ArenaGame({ onGameOver, input }) {
   const waveRef = useRef(1)
   const countdownRef = useRef(3)
   const countdownTimerRef = useRef(0)
+  const waveActiveRef = useRef(false) // 🔑 FIX
 
   const [hp, setHp] = useState(100)
   const [wave, setWave] = useState(1)
@@ -23,29 +24,24 @@ export default function ArenaGame({ onGameOver, input }) {
   const [kills, setKills] = useState(0)
 
   useEffect(() => {
-    // 🔒 Lock mobile browser behavior
-    document.body.style.overflow = 'hidden'
-    document.body.style.userSelect = 'none'
-    document.body.style.webkitUserSelect = 'none'
-    document.body.style.webkitTouchCallout = 'none'
-
-    // 🔄 HARD RESET (this fixes wave 63 bug)
+    // Hard reset ONCE
     player.current = { x: 400, y: 250 }
     enemies.current = []
     bullets.current = []
 
     hpRef.current = 100
-    lastHitRef.current = 0
-    lastAttackRef.current = 0
-
     waveRef.current = 1
     countdownRef.current = 3
     countdownTimerRef.current = 0
+    waveActiveRef.current = false
 
     setHp(100)
     setWave(1)
     setCountdown(3)
     setKills(0)
+
+    document.body.style.overflow = 'hidden'
+    document.body.style.userSelect = 'none'
 
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
@@ -53,6 +49,8 @@ export default function ArenaGame({ onGameOver, input }) {
 
     function spawnWave() {
       enemies.current = []
+      waveActiveRef.current = true
+
       const w = waveRef.current
       const isBoss = w % 5 === 0
 
@@ -74,12 +72,12 @@ export default function ArenaGame({ onGameOver, input }) {
 
     function closestEnemy() {
       let best = null
-      let dMin = Infinity
+      let bestD = Infinity
       enemies.current.forEach(e => {
         const d = Math.hypot(e.x - player.current.x, e.y - player.current.y)
-        if (d < dMin) {
-          dMin = d
+        if (d < bestD) {
           best = e
+          bestD = d
         }
       })
       return best
@@ -108,11 +106,11 @@ export default function ArenaGame({ onGameOver, input }) {
     function loop(ts) {
       if (!running) return
 
-      // Countdown
-      if (enemies.current.length === 0) {
+      // Countdown between waves
+      if (!waveActiveRef.current) {
         countdownTimerRef.current += 0.016
         if (countdownTimerRef.current >= 1) {
-          countdownRef.current -= 1
+          countdownRef.current--
           setCountdown(countdownRef.current)
           countdownTimerRef.current = 0
         }
@@ -134,8 +132,8 @@ export default function ArenaGame({ onGameOver, input }) {
       const jx = Math.max(-1, Math.min(1, input.dx || 0))
       const jy = Math.max(-1, Math.min(1, input.dy || 0))
       if (Math.abs(jx) > 0.15 || Math.abs(jy) > 0.15) {
-        player.current.x += jx * speed * 2.2
-        player.current.y += jy * speed * 2.2
+        player.current.x += jx * speed * 2
+        player.current.y += jy * speed * 2
       }
 
       player.current.x = Math.max(20, Math.min(780, player.current.x))
@@ -152,7 +150,7 @@ export default function ArenaGame({ onGameOver, input }) {
       ctx.fill()
 
       // Bullets
-      ctx.fillStyle = '#ffffff'
+      ctx.fillStyle = '#fff'
       bullets.current.forEach(b => {
         b.x += b.vx
         b.y += b.vy
@@ -200,15 +198,17 @@ export default function ArenaGame({ onGameOver, input }) {
         return true
       })
 
+      // Wave cleared → increment ONCE
+      if (waveActiveRef.current && enemies.current.length === 0) {
+        waveActiveRef.current = false
+        waveRef.current++
+        setWave(waveRef.current)
+      }
+
       if (hpRef.current <= 0) {
         running = false
         onGameOver(waveRef.current * 100 + kills * 10)
         return
-      }
-
-      if (enemies.current.length === 0 && countdownRef.current === 3) {
-        waveRef.current += 1
-        setWave(waveRef.current)
       }
 
       requestAnimationFrame(loop)
@@ -216,15 +216,8 @@ export default function ArenaGame({ onGameOver, input }) {
 
     requestAnimationFrame(loop)
 
-    window.addEventListener('keydown', e => {
-      keys.current[e.key] = true
-      if (e.code === 'Space') input.attack = true
-    })
-    window.addEventListener('keyup', e => {
-      keys.current[e.key] = false
-      if (e.code === 'Space') input.attack = false
-    })
-
+    window.addEventListener('keydown', e => (keys.current[e.key] = true))
+    window.addEventListener('keyup', e => (keys.current[e.key] = false))
     window.addEventListener('mousedown', () => attack(performance.now()))
 
     return () => {
@@ -234,21 +227,18 @@ export default function ArenaGame({ onGameOver, input }) {
   }, [onGameOver, input])
 
   return (
-    <>
-      <div style={{ marginBottom: 8 }}>
+    <div style={{ position: 'relative' }}>
+      <div style={{ marginBottom: 6 }}>
         ❤️ {hp} &nbsp; 🌊 Wave {wave} &nbsp; 💀 {kills}
-        {countdown < 3 && <div>Next wave in {countdown}</div>}
+        {!waveActiveRef.current && <div>Next wave in {countdown}</div>}
       </div>
 
       <canvas
         ref={canvasRef}
         width={800}
         height={500}
-        style={{
-          touchAction: 'none',
-          userSelect: 'none'
-        }}
+        style={{ touchAction: 'none' }}
       />
-    </>
+    </div>
   )
 }
