@@ -3,50 +3,62 @@ import { useRef, useEffect, useState } from 'react'
 export default function ArenaGame({ onGameOver, input }) {
   const canvasRef = useRef(null)
 
+  // Core entities
   const player = useRef({ x: 400, y: 250 })
   const enemies = useRef([])
   const bullets = useRef([])
 
+  // Input
   const keys = useRef({})
 
+  // Timers / refs
   const hpRef = useRef(100)
   const lastHitRef = useRef(0)
   const lastAttackRef = useRef(0)
 
   const waveRef = useRef(1)
+  const waveActiveRef = useRef(false)
+
   const countdownRef = useRef(3)
   const countdownTimerRef = useRef(0)
-  const waveActiveRef = useRef(false) // 🔑 FIX
 
+  // UI state
   const [hp, setHp] = useState(100)
   const [wave, setWave] = useState(1)
   const [countdown, setCountdown] = useState(3)
   const [kills, setKills] = useState(0)
 
   useEffect(() => {
-    // Hard reset ONCE
+    /* ---------------- HARD RESET ON START ---------------- */
     player.current = { x: 400, y: 250 }
     enemies.current = []
     bullets.current = []
 
     hpRef.current = 100
+    lastHitRef.current = 0
+    lastAttackRef.current = 0
+
     waveRef.current = 1
+    waveActiveRef.current = false
     countdownRef.current = 3
     countdownTimerRef.current = 0
-    waveActiveRef.current = false
 
     setHp(100)
     setWave(1)
     setCountdown(3)
     setKills(0)
 
+    // Lock browser behavior
     document.body.style.overflow = 'hidden'
     document.body.style.userSelect = 'none'
+    document.body.style.webkitUserSelect = 'none'
+    document.body.style.webkitTouchCallout = 'none'
 
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
     let running = true
 
+    /* ---------------- WAVE SPAWN ---------------- */
     function spawnWave() {
       enemies.current = []
       waveActiveRef.current = true
@@ -70,26 +82,27 @@ export default function ArenaGame({ onGameOver, input }) {
       }
     }
 
+    /* ---------------- HELPERS ---------------- */
     function closestEnemy() {
       let best = null
       let bestD = Infinity
       enemies.current.forEach(e => {
         const d = Math.hypot(e.x - player.current.x, e.y - player.current.y)
         if (d < bestD) {
-          best = e
           bestD = d
+          best = e
         }
       })
       return best
     }
 
     function attack(ts) {
-      if (ts - lastAttackRef.current < 350) return
-      const t = closestEnemy()
-      if (!t) return
+      if (ts - lastAttackRef.current < 300) return
+      const target = closestEnemy()
+      if (!target) return
 
-      const dx = t.x - player.current.x
-      const dy = t.y - player.current.y
+      const dx = target.x - player.current.x
+      const dy = target.y - player.current.y
       const d = Math.hypot(dx, dy)
 
       bullets.current.push({
@@ -103,6 +116,7 @@ export default function ArenaGame({ onGameOver, input }) {
       lastAttackRef.current = ts
     }
 
+    /* ---------------- GAME LOOP ---------------- */
     function loop(ts) {
       if (!running) return
 
@@ -114,6 +128,7 @@ export default function ArenaGame({ onGameOver, input }) {
           setCountdown(countdownRef.current)
           countdownTimerRef.current = 0
         }
+
         if (countdownRef.current <= 0) {
           countdownRef.current = 3
           setCountdown(3)
@@ -121,16 +136,19 @@ export default function ArenaGame({ onGameOver, input }) {
         }
       }
 
-      // Movement
+      /* -------- PLAYER MOVEMENT -------- */
       const speed = 3.2
 
+      // PC keyboard
       if (keys.current['w'] || keys.current['ArrowUp']) player.current.y -= speed
       if (keys.current['s'] || keys.current['ArrowDown']) player.current.y += speed
       if (keys.current['a'] || keys.current['ArrowLeft']) player.current.x -= speed
       if (keys.current['d'] || keys.current['ArrowRight']) player.current.x += speed
 
+      // Mobile joystick (velocity only)
       const jx = Math.max(-1, Math.min(1, input.dx || 0))
       const jy = Math.max(-1, Math.min(1, input.dy || 0))
+
       if (Math.abs(jx) > 0.15 || Math.abs(jy) > 0.15) {
         player.current.x += jx * speed * 2
         player.current.y += jy * speed * 2
@@ -141,6 +159,7 @@ export default function ArenaGame({ onGameOver, input }) {
 
       if (input.attack) attack(ts)
 
+      /* -------- RENDER -------- */
       ctx.clearRect(0, 0, 800, 500)
 
       // Player
@@ -150,7 +169,7 @@ export default function ArenaGame({ onGameOver, input }) {
       ctx.fill()
 
       // Bullets
-      ctx.fillStyle = '#fff'
+      ctx.fillStyle = '#ffffff'
       bullets.current.forEach(b => {
         b.x += b.vx
         b.y += b.vy
@@ -180,6 +199,7 @@ export default function ArenaGame({ onGameOver, input }) {
         }
       })
 
+      // Bullet hits
       bullets.current.forEach(b => {
         enemies.current.forEach(e => {
           if (Math.hypot(b.x - e.x, b.y - e.y) < e.r) {
@@ -201,10 +221,11 @@ export default function ArenaGame({ onGameOver, input }) {
       // Wave cleared → increment ONCE
       if (waveActiveRef.current && enemies.current.length === 0) {
         waveActiveRef.current = false
-        waveRef.current++
+        waveRef.current += 1
         setWave(waveRef.current)
       }
 
+      // Death
       if (hpRef.current <= 0) {
         running = false
         onGameOver(waveRef.current * 100 + kills * 10)
@@ -216,8 +237,17 @@ export default function ArenaGame({ onGameOver, input }) {
 
     requestAnimationFrame(loop)
 
-    window.addEventListener('keydown', e => (keys.current[e.key] = true))
-    window.addEventListener('keyup', e => (keys.current[e.key] = false))
+    /* ---------------- INPUT LISTENERS ---------------- */
+    window.addEventListener('keydown', e => {
+      keys.current[e.key] = true
+      if (e.code === 'Space') input.attack = true
+    })
+
+    window.addEventListener('keyup', e => {
+      keys.current[e.key] = false
+      if (e.code === 'Space') input.attack = false
+    })
+
     window.addEventListener('mousedown', () => attack(performance.now()))
 
     return () => {
@@ -237,7 +267,10 @@ export default function ArenaGame({ onGameOver, input }) {
         ref={canvasRef}
         width={800}
         height={500}
-        style={{ touchAction: 'none' }}
+        style={{
+          touchAction: 'none',
+          userSelect: 'none'
+        }}
       />
     </div>
   )
