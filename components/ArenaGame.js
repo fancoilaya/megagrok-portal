@@ -2,8 +2,12 @@ import { useRef, useEffect, useState } from 'react'
 
 export default function ArenaGame({ onGameOver }) {
   const canvasRef = useRef(null)
-  const enemiesRef = useRef([])
-  const playerRef = useRef({ x: 400, y: 250 })
+
+  const player = useRef({ x: 400, y: 250 })
+  const enemies = useRef([])
+  const bullets = useRef([])
+
+  const keys = useRef({})
 
   const [hp, setHp] = useState(100)
   const [time, setTime] = useState(0)
@@ -12,57 +16,103 @@ export default function ArenaGame({ onGameOver }) {
   useEffect(() => {
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
-
     let running = true
-    enemiesRef.current = []
-    playerRef.current = { x: 400, y: 250 }
 
     function spawnEnemy() {
-      enemiesRef.current.push({
+      enemies.current.push({
         x: Math.random() * 800,
         y: Math.random() * 500,
-        r: 10,
-        speed: 0.6 + time * 0.01
+        hp: 3,
+        speed: 0.4 + time * 0.01
       })
     }
+
+    function shoot() {
+      if (enemies.current.length === 0) return
+      const target = enemies.current[0]
+      const dx = target.x - player.current.x
+      const dy = target.y - player.current.y
+      const d = Math.hypot(dx, dy)
+
+      bullets.current.push({
+        x: player.current.x,
+        y: player.current.y,
+        vx: (dx / d) * 6,
+        vy: (dy / d) * 6
+      })
+    }
+
+    const shootInterval = setInterval(shoot, 400)
 
     function loop() {
       if (!running) return
 
       setTime(t => t + 0.016)
-
       if (Math.random() < 0.03) spawnEnemy()
+
+      // Movement
+      const speed = 4
+      if (keys.current['w'] || keys.current['ArrowUp']) player.current.y -= speed
+      if (keys.current['s'] || keys.current['ArrowDown']) player.current.y += speed
+      if (keys.current['a'] || keys.current['ArrowLeft']) player.current.x -= speed
+      if (keys.current['d'] || keys.current['ArrowRight']) player.current.x += speed
+
+      player.current.x = Math.max(10, Math.min(790, player.current.x))
+      player.current.y = Math.max(10, Math.min(490, player.current.y))
 
       ctx.clearRect(0, 0, 800, 500)
 
-      // Player
+      // Player (Grok placeholder)
       ctx.fillStyle = '#ff7a00'
       ctx.beginPath()
-      ctx.arc(playerRef.current.x, playerRef.current.y, 10, 0, Math.PI * 2)
+      ctx.arc(player.current.x, player.current.y, 10, 0, Math.PI * 2)
       ctx.fill()
 
+      // Bullets
+      ctx.fillStyle = '#fff'
+      bullets.current.forEach(b => {
+        b.x += b.vx
+        b.y += b.vy
+        ctx.beginPath()
+        ctx.arc(b.x, b.y, 3, 0, Math.PI * 2)
+        ctx.fill()
+      })
+
       // Enemies
-      ctx.fillStyle = '#ff4d4d'
-      enemiesRef.current.forEach(e => {
-        const dx = playerRef.current.x - e.x
-        const dy = playerRef.current.y - e.y
+      ctx.fillStyle = '#ff4444'
+      enemies.current.forEach(e => {
+        const dx = player.current.x - e.x
+        const dy = player.current.y - e.y
         const d = Math.hypot(dx, dy)
 
         e.x += (dx / d) * e.speed
         e.y += (dy / d) * e.speed
 
         ctx.beginPath()
-        ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2)
+        ctx.arc(e.x, e.y, 10, 0, Math.PI * 2)
         ctx.fill()
 
         if (d < 18) {
           setHp(h => h - 1)
-          e.dead = true
+          e.hp = 0
         }
       })
 
-      enemiesRef.current = enemiesRef.current.filter(e => {
-        if (e.dead) {
+      // Bullet hits
+      bullets.current.forEach(b => {
+        enemies.current.forEach(e => {
+          const d = Math.hypot(b.x - e.x, b.y - e.y)
+          if (d < 12) {
+            e.hp -= 1
+            b.dead = true
+          }
+        })
+      })
+
+      bullets.current = bullets.current.filter(b => !b.dead)
+
+      enemies.current = enemies.current.filter(e => {
+        if (e.hp <= 0) {
           setKills(k => k + 1)
           return false
         }
@@ -71,6 +121,7 @@ export default function ArenaGame({ onGameOver }) {
 
       if (hp <= 0) {
         running = false
+        clearInterval(shootInterval)
         onGameOver(Math.floor(time * 5 + kills))
         return
       }
@@ -80,18 +131,22 @@ export default function ArenaGame({ onGameOver }) {
 
     loop()
 
-    function handleKey(e) {
-      if (e.key === 'ArrowUp') playerRef.current.y -= 10
-      if (e.key === 'ArrowDown') playerRef.current.y += 10
-      if (e.key === 'ArrowLeft') playerRef.current.x -= 10
-      if (e.key === 'ArrowRight') playerRef.current.x += 10
+    function keyDown(e) {
+      keys.current[e.key] = true
     }
 
-    window.addEventListener('keydown', handleKey)
+    function keyUp(e) {
+      keys.current[e.key] = false
+    }
+
+    window.addEventListener('keydown', keyDown)
+    window.addEventListener('keyup', keyUp)
 
     return () => {
       running = false
-      window.removeEventListener('keydown', handleKey)
+      clearInterval(shootInterval)
+      window.removeEventListener('keydown', keyDown)
+      window.removeEventListener('keyup', keyUp)
     }
   }, [hp, time, kills, onGameOver])
 
