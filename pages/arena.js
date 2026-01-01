@@ -3,12 +3,21 @@ import Header from '../components/Header'
 import Footer from '../components/Footer'
 import ArenaGame from '../components/ArenaGame'
 import ArenaLeaderboard from '../components/ArenaLeaderboard'
+import ArenaControls from '../components/ArenaControls'
 
 export default function Arena() {
-  const [mode, setMode] = useState('idle')
+  const [mode, setMode] = useState('idle') // idle | playing | gameover
   const [score, setScore] = useState(null)
+
   const [name, setName] = useState('')
   const [wallet, setWallet] = useState('')
+
+  // Unified input state (PC + Mobile)
+  const [input, setInput] = useState({
+    dx: 0,
+    dy: 0,
+    attack: false
+  })
 
   async function submitScore() {
     if (!name || !wallet || score === null) return
@@ -30,30 +39,46 @@ export default function Arena() {
       <Header />
 
       <main className="container">
+        {/* HERO */}
         <section className="hero">
           <h1>MEGAGROK ARENA</h1>
-          <p>Endless survival. One Grok. Pure skill.</p>
+          <p>Endless waves. Boss every 5 rounds. Survive.</p>
         </section>
 
         <div className="grid-two">
+          {/* LEFT PANEL */}
           <div className="panel">
             {mode === 'idle' && (
               <>
                 <h3>Enter the Arena</h3>
-                <p>Move with WASD / Arrow keys. Grok attacks automatically.</p>
-                <button className="cta-primary" onClick={() => setMode('playing')}>
+                <p>
+                  🖥 PC: WASD / Arrows + Space  
+                  <br />
+                  📱 Mobile: Joystick + Attack button
+                </p>
+
+                <button
+                  className="cta-primary"
+                  onClick={() => setMode('playing')}
+                >
                   ▶ START RUN
                 </button>
               </>
             )}
 
             {mode === 'playing' && (
-              <ArenaGame
-                onGameOver={(finalScore) => {
-                  setScore(finalScore)
-                  setMode('gameover')
-                }}
-              />
+              <>
+                <ArenaGame
+                  input={input}
+                  onGameOver={(finalScore) => {
+                    setScore(finalScore)
+                    setMode('gameover')
+                  }}
+                />
+
+                {/* Mobile controls overlay */}
+                <ArenaControls setInput={setInput} />
+              </>
             )}
 
             {mode === 'gameover' && (
@@ -72,7 +97,10 @@ export default function Arena() {
                   onChange={e => setWallet(e.target.value)}
                 />
 
-                <button className="cta-primary" onClick={submitScore}>
+                <button
+                  className="cta-primary"
+                  onClick={submitScore}
+                >
                   Submit Score
                 </button>
 
@@ -89,6 +117,7 @@ export default function Arena() {
             )}
           </div>
 
+          {/* RIGHT PANEL */}
           <div className="panel">
             <ArenaLeaderboard />
           </div>
