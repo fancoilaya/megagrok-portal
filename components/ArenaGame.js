@@ -3,7 +3,7 @@ import { useRef, useEffect, useState } from 'react'
 export default function ArenaGame({ onGameOver }) {
   const canvasRef = useRef(null)
 
-  // -------- PURE GAME STATE (NO REACT) --------
+  // -------- GAME STATE (PLAIN JS) --------
   let player = { x: 400, y: 250 }
   let enemies = []
   let bullets = []
@@ -20,8 +20,11 @@ export default function ArenaGame({ onGameOver }) {
   let moving = false
   let moveVec = { x: 0, y: 0 }
 
-  // -------- UI STATE (DISPLAY ONLY) --------
-  const [, forceUpdate] = useState(0)
+  // -------- UI STATE (REACT, READ-ONLY) --------
+  const [uiWave, setUiWave] = useState(1)
+  const [uiHp, setUiHp] = useState(100)
+  const [uiKills, setUiKills] = useState(0)
+  const [uiCountdown, setUiCountdown] = useState(null)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -29,6 +32,13 @@ export default function ArenaGame({ onGameOver }) {
     let running = true
 
     document.body.style.overflow = 'hidden'
+
+    function syncUI() {
+      setUiWave(wave)
+      setUiHp(Math.max(0, Math.floor(hp)))
+      setUiKills(kills)
+      setUiCountdown(waveCleared ? countdown : null)
+    }
 
     function spawnWave() {
       enemies = []
@@ -43,6 +53,7 @@ export default function ArenaGame({ onGameOver }) {
         })
       }
       waveCleared = false
+      syncUI()
     }
 
     spawnWave()
@@ -115,11 +126,12 @@ export default function ArenaGame({ onGameOver }) {
         return true
       })
 
-      // -------- WAVE LOGIC (SAFE) --------
+      // -------- WAVE LOGIC --------
       if (enemies.length === 0 && !waveCleared) {
         waveCleared = true
         countdown = 3
         countdownTimer = 0
+        syncUI()
       }
 
       if (waveCleared) {
@@ -127,6 +139,7 @@ export default function ArenaGame({ onGameOver }) {
         if (countdownTimer >= 1) {
           countdown--
           countdownTimer = 0
+          syncUI()
         }
         if (countdown <= 0) {
           wave++
@@ -156,9 +169,8 @@ export default function ArenaGame({ onGameOver }) {
         ctx.fill()
       })
 
-      // -------- UI UPDATE --------
-      forceUpdate(n => n + 1)
-
+      // -------- GAME OVER --------
+      syncUI()
       if (hp <= 0) {
         running = false
         onGameOver(wave * 100 + kills * 10)
@@ -232,10 +244,10 @@ export default function ArenaGame({ onGameOver }) {
   return (
     <>
       <div style={{ marginBottom: 6 }}>
-        ❤️ {Math.max(0, Math.floor(hp))} &nbsp;
-        🌊 Wave {wave} &nbsp;
-        💀 {kills}
-        {waveCleared && <span> — Next wave in {countdown}</span>}
+        ❤️ {uiHp} &nbsp;
+        🌊 Wave {uiWave} &nbsp;
+        💀 {uiKills}
+        {uiCountdown !== null && <span> — Next wave in {uiCountdown}</span>}
       </div>
 
       <canvas
