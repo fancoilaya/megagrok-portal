@@ -12,8 +12,8 @@ export default function ArenaGame({ onGameOver }) {
   const lastAttackRef = useRef(0)
 
   const waveRef = useRef(1)
-  const waveTimerRef = useRef(0)
-  const spawningRef = useRef(false)
+  const countdownRef = useRef(3)
+  const countdownTimerRef = useRef(0)
 
   const moveVec = useRef({ x: 0, y: 0 })
 
@@ -23,7 +23,6 @@ export default function ArenaGame({ onGameOver }) {
   const [kills, setKills] = useState(0)
 
   useEffect(() => {
-    // Lock scrolling on mobile while playing
     document.body.style.overflow = 'hidden'
 
     const canvas = canvasRef.current
@@ -34,17 +33,18 @@ export default function ArenaGame({ onGameOver }) {
     bullets.current = []
     hpRef.current = 100
     waveRef.current = 1
+    countdownRef.current = 3
     setWave(1)
     setCountdown(3)
 
     function startWave() {
       enemies.current = []
-      bullets.current = []
-      spawningRef.current = true
 
       const isBoss = waveRef.current % 5 === 0
       const enemyCount = isBoss ? 1 : 3 + waveRef.current
-      const hpBase = isBoss ? 200 + waveRef.current * 40 : 25 + waveRef.current * 10
+      const hpBase = isBoss
+        ? 200 + waveRef.current * 40
+        : 30 + waveRef.current * 12
 
       for (let i = 0; i < enemyCount; i++) {
         enemies.current.push({
@@ -56,8 +56,6 @@ export default function ArenaGame({ onGameOver }) {
           boss: isBoss
         })
       }
-
-      spawningRef.current = false
     }
 
     function closestEnemy() {
@@ -96,22 +94,23 @@ export default function ArenaGame({ onGameOver }) {
     function loop(ts) {
       if (!running) return
 
-      // Countdown between waves
-      if (countdown > 0 && enemies.current.length === 0) {
-        waveTimerRef.current += 0.016
-        if (waveTimerRef.current >= 1) {
-          setCountdown(c => c - 1)
-          waveTimerRef.current = 0
+      // ----- COUNTDOWN LOGIC -----
+      if (enemies.current.length === 0) {
+        countdownTimerRef.current += 0.016
+        if (countdownTimerRef.current >= 1) {
+          countdownRef.current -= 1
+          setCountdown(countdownRef.current)
+          countdownTimerRef.current = 0
         }
-        requestAnimationFrame(loop)
-        return
+
+        if (countdownRef.current <= 0) {
+          countdownRef.current = 0
+          setCountdown(0)
+          startWave()
+        }
       }
 
-      if (countdown === 0 && enemies.current.length === 0) {
-        startWave()
-      }
-
-      // Movement (mobile joystick)
+      // ----- MOVEMENT -----
       player.current.x += moveVec.current.x * 4
       player.current.y += moveVec.current.y * 4
 
@@ -120,13 +119,13 @@ export default function ArenaGame({ onGameOver }) {
 
       ctx.clearRect(0, 0, 800, 500)
 
-      // Player
+      // ----- PLAYER -----
       ctx.fillStyle = '#ff7a00'
       ctx.beginPath()
       ctx.arc(player.current.x, player.current.y, 14, 0, Math.PI * 2)
       ctx.fill()
 
-      // Bullets
+      // ----- BULLETS -----
       ctx.fillStyle = '#ffffff'
       bullets.current.forEach(b => {
         b.x += b.vx
@@ -136,7 +135,7 @@ export default function ArenaGame({ onGameOver }) {
         ctx.fill()
       })
 
-      // Enemies
+      // ----- ENEMIES -----
       enemies.current.forEach(e => {
         const dx = player.current.x - e.x
         const dy = player.current.y - e.y
@@ -150,7 +149,6 @@ export default function ArenaGame({ onGameOver }) {
         ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2)
         ctx.fill()
 
-        // Player hit (i-frames)
         if (d < e.r + 12 && ts - lastHitRef.current > 700) {
           hpRef.current -= e.boss ? 20 : 10
           setHp(hpRef.current)
@@ -158,7 +156,7 @@ export default function ArenaGame({ onGameOver }) {
         }
       })
 
-      // Bullet hits
+      // ----- COLLISIONS -----
       bullets.current.forEach(b => {
         enemies.current.forEach(e => {
           const d = Math.hypot(b.x - e.x, b.y - e.y)
@@ -178,10 +176,11 @@ export default function ArenaGame({ onGameOver }) {
         return true
       })
 
-      // Wave cleared
-      if (!spawningRef.current && enemies.current.length === 0 && countdown === 0) {
+      // ----- WAVE COMPLETE -----
+      if (enemies.current.length === 0 && countdownRef.current === 0) {
         waveRef.current += 1
         setWave(waveRef.current)
+        countdownRef.current = 3
         setCountdown(3)
       }
 
@@ -196,7 +195,7 @@ export default function ArenaGame({ onGameOver }) {
 
     requestAnimationFrame(loop)
 
-    // Mobile joystick (left side)
+    // ----- CONTROLS -----
     canvas.addEventListener('touchstart', e => {
       const t = e.touches[0]
       if (t.clientX < window.innerWidth / 2) {
@@ -220,7 +219,6 @@ export default function ArenaGame({ onGameOver }) {
       moveVec.current = { x: 0, y: 0 }
     })
 
-    // Desktop attack
     window.addEventListener('mousedown', () => attack(performance.now()))
     window.addEventListener('keydown', e => {
       if (e.code === 'Space') attack(performance.now())
