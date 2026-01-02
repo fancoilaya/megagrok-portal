@@ -3,34 +3,36 @@
 export const MOB_TYPES = {
   grunt: {
     id: 'grunt',
-    name: 'Grok Grunt',
-    hp: 40,
+    hp: 30,
     speed: 80,
-    damage: 1,
-    size: 12,
+    damage: 8,
+    size: 10,
     color: 0xff4444,
-    behavior: 'melee'
+    attackRange: 18,
+    followRange: 9999
   },
 
   runner: {
     id: 'runner',
-    name: 'Swift Grok',
-    hp: 25,
-    speed: 130,
-    damage: 0.8,
-    size: 10,
-    color: 0xffaa00,
-    behavior: 'melee'
+    hp: 22,
+    speed: 120,
+    damage: 6,
+    size: 9,
+    color: 0xff7777,
+    attackRange: 15,
+    followRange: 9999
   },
 
   tank: {
     id: 'tank',
-    name: 'Iron Grok',
     hp: 120,
     speed: 40,
-    damage: 2,
-    size: 18,
-    color: 0x884444,
-    behavior: 'melee'
+    damage: 15,
+    size: 16,
+    color: 0xaa2222,
+    attackRange: 20,
+    followRange: 9999
   }
+
+  // ranged mobs will be added later cleanly
 }
