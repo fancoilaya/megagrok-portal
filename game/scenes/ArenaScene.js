@@ -132,7 +132,6 @@ export default class ArenaScene extends Phaser.Scene {
 
   spawnWave() {
     this.enemies.clear(true, true)
-
     const config = this.getWaveConfig(this.wave)
 
     config.mobs.forEach(group => {
@@ -180,6 +179,28 @@ export default class ArenaScene extends Phaser.Scene {
     const dmg = Phaser.Math.Between(10, 14)
     closest.hp -= dmg
 
+    // Floating damage number
+    const dmgText = this.add.text(
+      closest.x,
+      closest.y - closest.size - 10,
+      `-${dmg}`,
+      {
+        fontSize: '14px',
+        color: '#ff4444',
+        fontStyle: 'bold'
+      }
+    ).setOrigin(0.5)
+
+    this.tweens.add({
+      targets: dmgText,
+      y: dmgText.y - 20,
+      alpha: 0,
+      duration: 600,
+      ease: 'Cubic.easeOut',
+      onComplete: () => dmgText.destroy()
+    })
+
+    // Slash visual
     const g = this.add.graphics()
     g.lineStyle(3, 0xffaa00, 1)
     g.beginPath()
