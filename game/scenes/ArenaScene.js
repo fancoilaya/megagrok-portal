@@ -82,12 +82,10 @@ export default class ArenaScene extends Phaser.Scene {
     this.ui = this.add.text(10, 10, '', { fontSize: 14, color: '#fff' }).setScrollFactor(0)
 
     this.countdownText = this.add.text(
-      400, 250, '', {
-        fontSize: '48px',
-        color: '#fff',
-        fontStyle: 'bold',
-        align: 'center'
-      }
+      400,
+      250,
+      '',
+      { fontSize: '48px', color: '#fff', fontStyle: 'bold', align: 'center' }
     ).setOrigin(0.5).setScrollFactor(0)
 
     this.startCountdown()
@@ -131,22 +129,13 @@ export default class ArenaScene extends Phaser.Scene {
     this.enemies.clear(true, true)
 
     if (this.wave % 5 === 0) {
-      this.spawnBoss()
+      this.spawnEnemy('boss')
     } else {
-      this.spawnNormalWave()
+      const count = Math.min(3 + this.wave, 10)
+      for (let i = 0; i < count; i++) {
+        this.spawnEnemy('normal')
+      }
     }
-  }
-
-  spawnNormalWave() {
-    const count = Math.min(3 + this.wave, 10)
-
-    for (let i = 0; i < count; i++) {
-      this.spawnEnemy('normal')
-    }
-  }
-
-  spawnBoss() {
-    this.spawnEnemy('boss')
   }
 
   spawnEnemy(type) {
@@ -161,13 +150,22 @@ export default class ArenaScene extends Phaser.Scene {
     this.physics.add.existing(e)
 
     e.type = type
-    e.maxHp = isBoss ? 300 + this.wave * 40 : 30 + this.wave * 6
+    e.maxHp = isBoss
+      ? 300 + this.wave * 40
+      : 40 + this.wave * this.wave * 4
     e.hp = e.maxHp
     e.speed = isBoss ? 30 : 40 + this.wave * 6
 
     const barWidth = isBoss ? 50 : 20
 
-    e.hpBarBg = this.add.rectangle(e.x, e.y - (isBoss ? 36 : 18), barWidth, 6, 0x000000).setDepth(5)
+    e.hpBarBg = this.add.rectangle(
+      e.x,
+      e.y - (isBoss ? 36 : 18),
+      barWidth,
+      6,
+      0x000000
+    ).setDepth(5)
+
     e.hpBar = this.add.rectangle(
       e.x - barWidth / 2,
       e.y - (isBoss ? 36 : 18),
@@ -211,12 +209,29 @@ export default class ArenaScene extends Phaser.Scene {
     const dmg = Phaser.Math.Between(10, 14)
     closest.hp -= dmg
 
+    // Attack visual (slash line)
+    const gfx = this.add.graphics()
+    gfx.lineStyle(3, 0xffaa00, 0.9)
+    gfx.beginPath()
+    gfx.moveTo(this.player.x, this.player.y)
+    gfx.lineTo(closest.x, closest.y)
+    gfx.strokePath()
+
+    this.tweens.add({
+      targets: gfx,
+      alpha: 0,
+      duration: 120,
+      onComplete: () => gfx.destroy()
+    })
+
+    // Hit feedback
     closest.setFillStyle(0xffaaaa)
     this.tweens.add({ targets: closest, scale: 1.12, yoyo: true, duration: 80 })
     this.time.delayedCall(80, () => {
       closest.setFillStyle(closest.type === 'boss' ? 0x8b0000 : 0xff4444)
     })
 
+    // Damage number
     const txt = this.add.text(
       closest.x,
       closest.y - (closest.type === 'boss' ? 30 : 12),
