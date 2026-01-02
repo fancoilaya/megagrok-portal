@@ -1,4 +1,6 @@
 import Phaser from 'phaser'
+import { spawnMob } from '../mobs/mobFactory'
+import { updateMob } from '../mobs/mobBehaviors'
 
 export default class ArenaScene extends Phaser.Scene {
   constructor(onGameOver) {
@@ -7,10 +9,9 @@ export default class ArenaScene extends Phaser.Scene {
   }
 
   create() {
-    // ---------------- MULTI-TOUCH ----------------
+    // Enable multitouch
     this.input.addPointer(2)
 
-    // ---------------- STATE ----------------
     this.wave = 1
     this.score = 0
     this.playerHp = 100
@@ -22,48 +23,40 @@ export default class ArenaScene extends Phaser.Scene {
     this.attackCooldown = 350
     this.canAttack = true
 
-    // ---------------- PLAYER ----------------
+    // Player
     this.player = this.add.circle(400, 250, 14, 0xff7a00)
     this.physics.add.existing(this.player)
     this.player.body.setCollideWorldBounds(true)
 
-    // ---------------- ENEMIES ----------------
+    // Enemies
     this.enemies = this.physics.add.group()
 
-    // ---------------- CONTROLS (PC) ----------------
+    // Controls (PC)
     this.cursors = this.input.keyboard.createCursorKeys()
     this.keys = this.input.keyboard.addKeys('W,A,S,D,SPACE')
 
-    // ---------------- UI ----------------
-    this.uiText = this.add.text(10, 10, '', {
-      fontSize: 14,
-      color: '#ffffff'
-    })
+    // UI
+    this.uiText = this.add.text(10, 10, '', { fontSize: 14, color: '#fff' })
+    this.countdownText = this.add.text(
+      400, 250, '',
+      { fontSize: '48px', fontStyle: 'bold', color: '#fff' }
+    ).setOrigin(0.5)
 
-    this.countdownText = this.add.text(400, 250, '', {
-      fontSize: '48px',
-      fontStyle: 'bold',
-      color: '#ffffff'
-    }).setOrigin(0.5)
-
-    // ---------------- MOBILE JOYSTICK ----------------
+    // Mobile joystick
     this.joyBase = this.add.circle(110, 390, 55, 0x000000, 0.35).setScrollFactor(0)
     this.joyThumb = this.add.circle(110, 390, 28, 0xffffff, 0.6).setScrollFactor(0)
     this.joyVector = { x: 0, y: 0 }
     this.joyPointerId = null
 
-    // ---------------- ATTACK BUTTON ----------------
+    // Attack button
     this.attackBtn = this.add.circle(690, 390, 48, 0xff7a00, 0.9)
       .setScrollFactor(0)
       .setInteractive()
-
     this.add.text(676, 372, '🔥', { fontSize: 34 }).setScrollFactor(0)
-
     this.attackBtn.on('pointerdown', () => this.tryAttack())
 
-    // ---------------- TOUCH INPUT ----------------
+    // Touch input
     this.input.on('pointerdown', p => {
-      // LEFT SIDE = joystick only
       if (p.x < this.scale.width / 2 && this.joyPointerId === null) {
         this.joyPointerId = p.id
       }
@@ -71,7 +64,6 @@ export default class ArenaScene extends Phaser.Scene {
 
     this.input.on('pointermove', p => {
       if (p.id !== this.joyPointerId) return
-
       const dx = p.x - this.joyBase.x
       const dy = p.y - this.joyBase.y
       const dist = Math.min(Math.hypot(dx, dy), 45)
@@ -81,7 +73,6 @@ export default class ArenaScene extends Phaser.Scene {
         this.joyBase.x + Math.cos(angle) * dist,
         this.joyBase.y + Math.sin(angle) * dist
       )
-
       this.joyVector.x = Math.cos(angle) * (dist / 45)
       this.joyVector.y = Math.sin(angle) * (dist / 45)
     })
@@ -95,18 +86,14 @@ export default class ArenaScene extends Phaser.Scene {
       }
     })
 
-    // ---------------- START ----------------
     this.startCountdown()
   }
-
-  // ---------------- COUNTDOWN ----------------
 
   startCountdown() {
     this.inCountdown = true
     this.countdown = 3
     this.countdownTimer = 0
-    const label = this.wave % 5 === 0 ? 'BOSS WAVE' : `WAVE ${this.wave}`
-    this.countdownText.setText(`${label}\n${this.countdown}`)
+    this.countdownText.setText(`WAVE ${this.wave}\n${this.countdown}`)
   }
 
   updateCountdown(delta) {
@@ -114,10 +101,8 @@ export default class ArenaScene extends Phaser.Scene {
     if (this.countdownTimer >= 1000) {
       this.countdownTimer = 0
       this.countdown--
-
       if (this.countdown > 0) {
-        const label = this.wave % 5 === 0 ? 'BOSS WAVE' : `WAVE ${this.wave}`
-        this.countdownText.setText(`${label}\n${this.countdown}`)
+        this.countdownText.setText(`WAVE ${this.wave}\n${this.countdown}`)
       } else {
         this.countdownText.setText('')
         this.inCountdown = false
@@ -126,56 +111,22 @@ export default class ArenaScene extends Phaser.Scene {
     }
   }
 
-  // ---------------- SPAWNING ----------------
-
   spawnWave() {
     this.enemies.clear(true, true)
 
-    if (this.wave % 5 === 0) {
-      this.spawnBoss()
-      return
-    }
-
+    const types = ['grunt', 'runner', 'tank']
     const count = Math.min(3 + this.wave, 10)
+
     for (let i = 0; i < count; i++) {
-      this.spawnEnemy()
+      const type = Phaser.Utils.Array.GetRandom(types)
+      spawnMob(
+        this,
+        type,
+        Phaser.Math.Between(120, 680),
+        Phaser.Math.Between(120, 380)
+      )
     }
   }
-
-  spawnBoss() {
-    const e = this.add.circle(400, 120, 26, 0x8b0000)
-    this.physics.add.existing(e)
-    e.body.setCollideWorldBounds(true)
-
-    e.hp = 400 + this.wave * 50
-    e.maxHp = e.hp
-    e.speed = 40
-    e.isBoss = true
-
-    e.hpBar = this.add.rectangle(e.x, e.y - 36, 50, 6, 0xff0000).setOrigin(0.5)
-    this.enemies.add(e)
-  }
-
-  spawnEnemy() {
-    const e = this.add.circle(
-      Phaser.Math.Between(120, 680),
-      Phaser.Math.Between(120, 380),
-      12,
-      0xff4444
-    )
-    this.physics.add.existing(e)
-    e.body.setCollideWorldBounds(true)
-
-    e.hp = 40 + this.wave * this.wave * 4
-    e.maxHp = e.hp
-    e.speed = 80
-    e.isBoss = false
-
-    e.hpBar = this.add.rectangle(e.x, e.y - 18, 20, 4, 0xff0000).setOrigin(0.5)
-    this.enemies.add(e)
-  }
-
-  // ---------------- ATTACK ----------------
 
   tryAttack() {
     if (!this.canAttack || this.inCountdown) return
@@ -195,10 +146,7 @@ export default class ArenaScene extends Phaser.Scene {
 
     list.forEach(e => {
       const d = Phaser.Math.Distance.Between(
-        this.player.x,
-        this.player.y,
-        e.x,
-        e.y
+        this.player.x, this.player.y, e.x, e.y
       )
       if (d < minDist) {
         minDist = d
@@ -217,7 +165,6 @@ export default class ArenaScene extends Phaser.Scene {
     g.moveTo(this.player.x, this.player.y)
     g.lineTo(closest.x, closest.y)
     g.strokePath()
-
     this.tweens.add({
       targets: g,
       alpha: 0,
@@ -228,11 +175,9 @@ export default class ArenaScene extends Phaser.Scene {
     if (closest.hp <= 0) {
       closest.hpBar.destroy()
       closest.destroy()
-      this.score += closest.isBoss ? 1000 : 100
+      this.score += 100
     }
   }
-
-  // ---------------- UPDATE ----------------
 
   update(_, delta) {
     if (this.inCountdown) {
@@ -251,26 +196,17 @@ export default class ArenaScene extends Phaser.Scene {
     if (this.cursors.down.isDown || this.keys.S.isDown) vy += speed
 
     this.player.body.setVelocity(vx, vy)
-
     if (this.keys.SPACE.isDown) this.tryAttack()
 
     this.enemies.getChildren().forEach(e => {
-      this.physics.moveToObject(e, this.player, e.speed)
-
-      const barWidth = e.isBoss ? 50 : 20
-      const yOffset = e.isBoss ? 36 : 18
-      e.hpBar.setPosition(e.x, e.y - yOffset)
-      e.hpBar.width = (e.hp / e.maxHp) * barWidth
-
+      updateMob(this, e, this.player, delta)
       if (
         Phaser.Math.Distance.Between(
-          e.x,
-          e.y,
-          this.player.x,
-          this.player.y
+          e.x, e.y,
+          this.player.x, this.player.y
         ) < 18
       ) {
-        this.playerHp -= (e.isBoss ? 0.08 : 0.05) * delta
+        this.playerHp -= e.damage * delta * 0.05
       }
     })
 
