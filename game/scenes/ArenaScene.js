@@ -11,7 +11,6 @@ export default class ArenaScene extends Phaser.Scene {
     this.score = 0
     this.hp = 100
 
-    // Countdown
     this.inCountdown = true
     this.countdownValue = 3
     this.countdownTimer = 0
@@ -25,8 +24,9 @@ export default class ArenaScene extends Phaser.Scene {
     this.physics.add.existing(this.player)
     this.player.body.setCollideWorldBounds(true)
 
-    // Enemies
+    // Groups
     this.enemies = this.physics.add.group()
+    this.projectiles = this.physics.add.group()
 
     // PC controls
     this.cursors = this.input.keyboard.createCursorKeys()
@@ -45,7 +45,6 @@ export default class ArenaScene extends Phaser.Scene {
       .setInteractive()
 
     this.attackIcon = this.add.text(702, 398, '🔥', { fontSize: 24 }).setScrollFactor(0)
-
     this.attackButton.on('pointerdown', () => this.tryAttack())
 
     // Pointer handling
@@ -80,13 +79,15 @@ export default class ArenaScene extends Phaser.Scene {
 
     // UI
     this.ui = this.add.text(10, 10, '', { fontSize: 14, color: '#fff' }).setScrollFactor(0)
-
     this.countdownText = this.add.text(
-      400,
-      250,
-      '',
-      { fontSize: '48px', color: '#fff', fontStyle: 'bold', align: 'center' }
+      400, 250, '', { fontSize: '48px', color: '#fff', fontStyle: 'bold', align: 'center' }
     ).setOrigin(0.5).setScrollFactor(0)
+
+    // Projectile collision
+    this.physics.add.overlap(this.player, this.projectiles, (player, proj) => {
+      proj.destroy()
+      this.hp -= 8
+    })
 
     this.startCountdown()
   }
@@ -97,7 +98,6 @@ export default class ArenaScene extends Phaser.Scene {
     this.inCountdown = true
     this.countdownValue = 3
     this.countdownTimer = 0
-
     const label = this.wave % 5 === 0 ? 'BOSS WAVE' : `WAVE ${this.wave}`
     this.countdownText.setText(`${label}\n${this.countdownValue}`)
   }
@@ -112,13 +112,9 @@ export default class ArenaScene extends Phaser.Scene {
         const label = this.wave % 5 === 0 ? 'BOSS WAVE' : `WAVE ${this.wave}`
         this.countdownText.setText(`${label}\n${this.countdownValue}`)
       } else {
-        const label = this.wave % 5 === 0 ? 'BOSS WAVE' : `WAVE ${this.wave}`
-        this.countdownText.setText(label)
-        this.time.delayedCall(600, () => {
-          this.countdownText.setText('')
-          this.inCountdown = false
-          this.spawnWave()
-        })
+        this.countdownText.setText('')
+        this.inCountdown = false
+        this.spawnWave()
       }
     }
   }
@@ -127,45 +123,42 @@ export default class ArenaScene extends Phaser.Scene {
 
   spawnWave() {
     this.enemies.clear(true, true)
+    this.projectiles.clear(true, true)
 
     if (this.wave % 5 === 0) {
       this.spawnEnemy('boss')
     } else {
       const count = Math.min(3 + this.wave, 10)
       for (let i = 0; i < count; i++) {
-        this.spawnEnemy('normal')
+        const type = this.wave >= 3 && Math.random() < 0.35 ? 'ranged' : 'normal'
+        this.spawnEnemy(type)
       }
     }
   }
 
   spawnEnemy(type) {
     const isBoss = type === 'boss'
+    const isRanged = type === 'ranged'
 
     const e = this.add.circle(
       Phaser.Math.Between(100, 700),
       Phaser.Math.Between(100, 400),
       isBoss ? 26 : 12,
-      isBoss ? 0x8b0000 : 0xff4444
+      isBoss ? 0x8b0000 : isRanged ? 0x3399ff : 0xff4444
     )
     this.physics.add.existing(e)
 
     e.type = type
-    e.maxHp = isBoss
-      ? 300 + this.wave * 40
-      : 40 + this.wave * this.wave * 4
+    e.maxHp = isBoss ? 300 + this.wave * 40 : 40 + this.wave * this.wave * 4
     e.hp = e.maxHp
-    e.speed = isBoss ? 30 : 40 + this.wave * 6
+    e.speed = isBoss ? 30 : isRanged ? 20 : 40 + this.wave * 6
+
+    e.fireCooldown = 1200 + Math.random() * 800
+    e.lastShot = 0
 
     const barWidth = isBoss ? 50 : 20
 
-    e.hpBarBg = this.add.rectangle(
-      e.x,
-      e.y - (isBoss ? 36 : 18),
-      barWidth,
-      6,
-      0x000000
-    ).setDepth(5)
-
+    e.hpBarBg = this.add.rectangle(e.x, e.y - (isBoss ? 36 : 18), barWidth, 6, 0x000000).setDepth(5)
     e.hpBar = this.add.rectangle(
       e.x - barWidth / 2,
       e.y - (isBoss ? 36 : 18),
@@ -183,10 +176,7 @@ export default class ArenaScene extends Phaser.Scene {
     if (!this.canAttack || this.inCountdown) return
     this.canAttack = false
     this.attack()
-
-    this.time.delayedCall(this.attackCooldown, () => {
-      this.canAttack = true
-    })
+    this.time.delayedCall(this.attackCooldown, () => (this.canAttack = true))
   }
 
   attack() {
@@ -209,34 +199,21 @@ export default class ArenaScene extends Phaser.Scene {
     const dmg = Phaser.Math.Between(10, 14)
     closest.hp -= dmg
 
-    // Attack visual (slash line)
+    // Slash visual
     const gfx = this.add.graphics()
     gfx.lineStyle(3, 0xffaa00, 0.9)
     gfx.beginPath()
     gfx.moveTo(this.player.x, this.player.y)
     gfx.lineTo(closest.x, closest.y)
     gfx.strokePath()
-
-    this.tweens.add({
-      targets: gfx,
-      alpha: 0,
-      duration: 120,
-      onComplete: () => gfx.destroy()
-    })
-
-    // Hit feedback
-    closest.setFillStyle(0xffaaaa)
-    this.tweens.add({ targets: closest, scale: 1.12, yoyo: true, duration: 80 })
-    this.time.delayedCall(80, () => {
-      closest.setFillStyle(closest.type === 'boss' ? 0x8b0000 : 0xff4444)
-    })
+    this.tweens.add({ targets: gfx, alpha: 0, duration: 120, onComplete: () => gfx.destroy() })
 
     // Damage number
     const txt = this.add.text(
       closest.x,
-      closest.y - (closest.type === 'boss' ? 30 : 12),
+      closest.y - 12,
       `-${dmg}`,
-      { fontSize: closest.type === 'boss' ? '20px' : '16px', color: '#ffffff' }
+      { fontSize: '16px', color: '#fff' }
     ).setOrigin(0.5).setDepth(10)
 
     this.tweens.add({
@@ -275,13 +252,27 @@ export default class ArenaScene extends Phaser.Scene {
 
     vx += this.joystickVector.x * speed
     vy += this.joystickVector.y * speed
-
     this.player.body.setVelocity(vx, vy)
 
     if (this.keys.SPACE.isDown) this.tryAttack()
 
+    const now = this.time.now
+
     this.enemies.getChildren().forEach(e => {
-      this.physics.moveToObject(e, this.player, e.speed)
+      if (e.type === 'ranged') {
+        const dist = Phaser.Math.Distance.Between(e.x, e.y, this.player.x, this.player.y)
+
+        if (dist < 220) {
+          this.physics.moveTo(e, e.x + (e.x - this.player.x), e.y + (e.y - this.player.y), e.speed)
+        }
+
+        if (now - e.lastShot > e.fireCooldown) {
+          e.lastShot = now
+          this.fireProjectile(e)
+        }
+      } else {
+        this.physics.moveToObject(e, this.player, e.speed)
+      }
 
       const barWidth = e.type === 'boss' ? 50 : 20
       e.hpBarBg.setPosition(e.x, e.y - (e.type === 'boss' ? 36 : 18))
@@ -298,13 +289,28 @@ export default class ArenaScene extends Phaser.Scene {
       this.startCountdown()
     }
 
-    this.ui.setText(
-      `❤️ ${Math.floor(this.hp)}   🌊 Wave ${this.wave}   🏆 ${this.score}`
-    )
+    this.ui.setText(`❤️ ${Math.floor(this.hp)}   🌊 Wave ${this.wave}   🏆 ${this.score}`)
 
     if (this.hp <= 0) {
       this.onGameOver({ score: this.score, wave: this.wave })
       this.scene.stop()
     }
+  }
+
+  fireProjectile(enemy) {
+    const proj = this.add.circle(enemy.x, enemy.y, 4, 0x66ccff)
+    this.physics.add.existing(proj)
+    proj.body.setVelocity(
+      (this.player.x - enemy.x) * 1.5,
+      (this.player.y - enemy.y) * 1.5
+    )
+    proj.body.setCollideWorldBounds(true)
+    proj.body.onWorldBounds = true
+
+    this.projectiles.add(proj)
+
+    this.time.delayedCall(4000, () => {
+      if (proj.active) proj.destroy()
+    })
   }
 }
