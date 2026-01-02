@@ -1,31 +1,25 @@
-import { kv } from '@vercel/kv'
+import { Redis } from '@upstash/redis'
 
-export const runtime = 'edge'
+const redis = new Redis({
+  url: process.env.KV_REST_API_URL,
+  token: process.env.KV_REST_API_TOKEN
+})
 
-export default async function handler() {
+export default async function handler(req, res) {
   try {
     const today = new Date().toISOString().slice(0, 10)
     const key = `arena:daily:${today}`
 
-    const raw = await kv.zrange(key, 0, 24, { rev: true })
+    const raw = await redis.zrange(key, 0, 24, { rev: true })
 
-    const leaderboard = raw.map((item, index) => {
-      const data = JSON.parse(item)
-      return {
-        rank: index + 1,
-        ...data
-      }
-    })
+    const leaderboard = raw.map((item, index) => ({
+      rank: index + 1,
+      ...item
+    }))
 
-    return new Response(
-      JSON.stringify({ leaderboard }),
-      { headers: { 'Content-Type': 'application/json' } }
-    )
+    res.status(200).json({ leaderboard })
   } catch (err) {
-    console.error('Leaderboard error', err)
-    return new Response(
-      JSON.stringify({ error: 'Internal error' }),
-      { status: 500 }
-    )
+    console.error('Leaderboard error:', err)
+    res.status(500).json({ error: err.message })
   }
 }
