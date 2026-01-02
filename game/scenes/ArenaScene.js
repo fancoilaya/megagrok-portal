@@ -7,9 +7,15 @@ export default class ArenaScene extends Phaser.Scene {
   }
 
   create() {
+    // Core state
     this.wave = 1
     this.score = 0
     this.hp = 100
+
+    // Countdown state
+    this.inCountdown = true
+    this.countdownValue = 3
+    this.countdownTimer = 0
 
     // Player
     this.player = this.add.circle(400, 250, 14, 0xff7a00)
@@ -34,6 +40,8 @@ export default class ArenaScene extends Phaser.Scene {
     this.activePointerId = null
 
     this.input.on('pointerdown', (pointer) => {
+      if (this.inCountdown) return
+
       if (pointer.x < this.scale.width / 2) {
         this.activePointerId = pointer.id
       } else {
@@ -42,13 +50,14 @@ export default class ArenaScene extends Phaser.Scene {
     })
 
     this.input.on('pointermove', (pointer) => {
+      if (this.inCountdown) return
       if (pointer.id !== this.activePointerId) return
 
       const dx = pointer.x - this.joystickBase.x
       const dy = pointer.y - this.joystickBase.y
       const dist = Math.min(Math.hypot(dx, dy), 30)
-
       const angle = Math.atan2(dy, dx)
+
       this.joystickThumb.x = this.joystickBase.x + Math.cos(angle) * dist
       this.joystickThumb.y = this.joystickBase.y + Math.sin(angle) * dist
 
@@ -68,8 +77,50 @@ export default class ArenaScene extends Phaser.Scene {
     // UI
     this.ui = this.add.text(10, 10, '', { fontSize: 14, color: '#fff' }).setScrollFactor(0)
 
-    this.spawnWave()
+    this.countdownText = this.add.text(
+      this.scale.width / 2,
+      this.scale.height / 2,
+      '',
+      {
+        fontSize: '48px',
+        color: '#ffffff',
+        fontStyle: 'bold'
+      }
+    ).setOrigin(0.5).setScrollFactor(0)
+
+    // Start first countdown
+    this.startCountdown()
   }
+
+  // ---------------- COUNTDOWN ----------------
+
+  startCountdown() {
+    this.inCountdown = true
+    this.countdownValue = 3
+    this.countdownTimer = 0
+    this.countdownText.setText(`WAVE ${this.wave}\n${this.countdownValue}`)
+  }
+
+  updateCountdown(delta) {
+    this.countdownTimer += delta
+    if (this.countdownTimer >= 1000) {
+      this.countdownTimer = 0
+      this.countdownValue--
+
+      if (this.countdownValue > 0) {
+        this.countdownText.setText(`WAVE ${this.wave}\n${this.countdownValue}`)
+      } else {
+        this.countdownText.setText(`WAVE ${this.wave}`)
+        this.time.delayedCall(500, () => {
+          this.countdownText.setText('')
+          this.inCountdown = false
+          this.spawnWave()
+        })
+      }
+    }
+  }
+
+  // ---------------- WAVE ----------------
 
   spawnWave() {
     this.enemies.clear(true, true)
@@ -90,7 +141,11 @@ export default class ArenaScene extends Phaser.Scene {
     }
   }
 
+  // ---------------- ATTACK ----------------
+
   attack() {
+    if (this.inCountdown) return
+
     const enemies = this.enemies.getChildren()
     if (!enemies.length) return
 
@@ -116,39 +171,48 @@ export default class ArenaScene extends Phaser.Scene {
     }
   }
 
+  // ---------------- UPDATE ----------------
+
   update(_, delta) {
-    const speed = 180
-    let vx = 0
-    let vy = 0
+    if (this.inCountdown) {
+      this.player.body.setVelocity(0, 0)
+      this.updateCountdown(delta)
+    } else {
+      const speed = 180
+      let vx = 0
+      let vy = 0
 
-    // PC movement
-    if (this.cursors.left.isDown || this.keys.A.isDown) vx -= speed
-    if (this.cursors.right.isDown || this.keys.D.isDown) vx += speed
-    if (this.cursors.up.isDown || this.keys.W.isDown) vy -= speed
-    if (this.cursors.down.isDown || this.keys.S.isDown) vy += speed
+      // PC movement
+      if (this.cursors.left.isDown || this.keys.A.isDown) vx -= speed
+      if (this.cursors.right.isDown || this.keys.D.isDown) vx += speed
+      if (this.cursors.up.isDown || this.keys.W.isDown) vy -= speed
+      if (this.cursors.down.isDown || this.keys.S.isDown) vy += speed
 
-    // Mobile joystick movement
-    vx += this.joystickVector.x * speed
-    vy += this.joystickVector.y * speed
+      // Mobile joystick
+      vx += this.joystickVector.x * speed
+      vy += this.joystickVector.y * speed
 
-    this.player.body.setVelocity(vx, vy)
+      this.player.body.setVelocity(vx, vy)
 
-    if (this.keys.SPACE.isDown) {
-      this.attack()
-    }
-
-    this.enemies.getChildren().forEach(e => {
-      this.physics.moveToObject(e, this.player, e.speed)
-      if (Phaser.Math.Distance.Between(
-        e.x, e.y, this.player.x, this.player.y
-      ) < 20) {
-        this.hp -= 0.03 * delta
+      if (this.keys.SPACE.isDown) {
+        this.attack()
       }
-    })
 
-    if (this.enemies.countActive() === 0) {
-      this.wave++
-      this.spawnWave()
+      this.enemies.getChildren().forEach(e => {
+        this.physics.moveToObject(e, this.player, e.speed)
+        if (
+          Phaser.Math.Distance.Between(
+            e.x, e.y, this.player.x, this.player.y
+          ) < 20
+        ) {
+          this.hp -= 0.03 * delta
+        }
+      })
+
+      if (this.enemies.countActive() === 0) {
+        this.wave++
+        this.startCountdown()
+      }
     }
 
     this.ui.setText(
@@ -160,7 +224,6 @@ export default class ArenaScene extends Phaser.Scene {
         score: this.score,
         wave: this.wave
       })
-      
       this.scene.stop()
     }
   }
