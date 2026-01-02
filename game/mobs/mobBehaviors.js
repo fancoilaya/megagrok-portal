@@ -1,8 +1,18 @@
 // game/mobs/mobBehaviors.js
 import Phaser from 'phaser'
 
-export function updateMob(scene, mob, player, delta) {
-  scene.physics.moveToObject(mob, player, mob.speed)
+export function updateMob(scene, mob, player) {
+  const dist = Phaser.Math.Distance.Between(
+    mob.x, mob.y,
+    player.x, player.y
+  )
+
+  // Follow player (melee for now)
+  if (dist > mob.attackRange) {
+    scene.physics.moveToObject(mob, player, mob.speed)
+  } else {
+    mob.body.setVelocity(0, 0)
+  }
 
   // HP bar follow
   mob.hpBar.setPosition(
