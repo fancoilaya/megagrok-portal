@@ -7,6 +7,9 @@ export default class ArenaScene extends Phaser.Scene {
   }
 
   create() {
+    // ---------------- MULTI-TOUCH ----------------
+    this.input.addPointer(2)
+
     // ---------------- STATE ----------------
     this.wave = 1
     this.score = 0
@@ -47,7 +50,7 @@ export default class ArenaScene extends Phaser.Scene {
     this.joyBase = this.add.circle(110, 390, 55, 0x000000, 0.35).setScrollFactor(0)
     this.joyThumb = this.add.circle(110, 390, 28, 0xffffff, 0.6).setScrollFactor(0)
     this.joyVector = { x: 0, y: 0 }
-    this.activePointer = null
+    this.joyPointerId = null
 
     // ---------------- ATTACK BUTTON ----------------
     this.attackBtn = this.add.circle(690, 390, 48, 0xff7a00, 0.9)
@@ -60,13 +63,14 @@ export default class ArenaScene extends Phaser.Scene {
 
     // ---------------- TOUCH INPUT ----------------
     this.input.on('pointerdown', p => {
-      if (p.x < this.scale.width / 2) {
-        this.activePointer = p.id
+      // LEFT SIDE = joystick only
+      if (p.x < this.scale.width / 2 && this.joyPointerId === null) {
+        this.joyPointerId = p.id
       }
     })
 
     this.input.on('pointermove', p => {
-      if (p.id !== this.activePointer) return
+      if (p.id !== this.joyPointerId) return
 
       const dx = p.x - this.joyBase.x
       const dy = p.y - this.joyBase.y
@@ -82,11 +86,13 @@ export default class ArenaScene extends Phaser.Scene {
       this.joyVector.y = Math.sin(angle) * (dist / 45)
     })
 
-    this.input.on('pointerup', () => {
-      this.activePointer = null
-      this.joyThumb.setPosition(this.joyBase.x, this.joyBase.y)
-      this.joyVector.x = 0
-      this.joyVector.y = 0
+    this.input.on('pointerup', p => {
+      if (p.id === this.joyPointerId) {
+        this.joyPointerId = null
+        this.joyThumb.setPosition(this.joyBase.x, this.joyBase.y)
+        this.joyVector.x = 0
+        this.joyVector.y = 0
+      }
     })
 
     // ---------------- START ----------------
