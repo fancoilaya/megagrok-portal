@@ -12,9 +12,11 @@ export default function ArenaPage() {
   const [name, setName] = useState('')
   const [wallet, setWallet] = useState('')
 
-  // 🔒 Create Phaser ONCE. Never tie to mode.
+  // -----------------------------
+  // START / STOP PHASER GAME
+  // -----------------------------
   useEffect(() => {
-    if (gameRef.current) return
+    if (mode !== 'playing') return
 
     let destroyed = false
 
@@ -38,18 +40,11 @@ export default function ArenaPage() {
         gameRef.current = null
       }
     }
-  }, [])
+  }, [mode])
 
-  function startGame() {
-    setMode('playing')
-
-    // restart scene safely
-    const scene = gameRef.current?.scene?.keys?.ArenaScene
-    if (scene) {
-      scene.scene.restart()
-    }
-  }
-
+  // -----------------------------
+  // SUBMIT SCORE
+  // -----------------------------
   async function submitScore() {
     if (!wallet) return
 
@@ -81,6 +76,7 @@ export default function ArenaPage() {
           <p>Survive endless waves. Mobile & PC.</p>
         </section>
 
+        {/* ---------------- IDLE ---------------- */}
         {mode === 'idle' && (
           <div className="panel">
             <p>
@@ -90,25 +86,30 @@ export default function ArenaPage() {
 
             <button
               className="cta-primary"
-              onClick={startGame}
+              onClick={() => setMode('playing')}
             >
               ▶ START ARENA
             </button>
           </div>
         )}
 
-        {/* 🔥 Phaser container MUST ALWAYS EXIST */}
-        <div
-          id="arena-container"
-          style={{
-            width: '100%',
-            maxWidth: 900,
-            height: 500,
-            margin: '0 auto',
-            visibility: mode === 'playing' ? 'visible' : 'hidden'
-          }}
-        />
+        {/* ---------------- PLAYING ---------------- */}
+        {mode === 'playing' && (
+          <div
+            id="arena-container"
+            style={{
+              width: '100%',
+              maxWidth: 900,
+              height: 500,           // 🔥 CRITICAL — NEVER REMOVE
+              margin: '0 auto',
+              background: '#000',
+              position: 'relative',
+              overflow: 'hidden'
+            }}
+          />
+        )}
 
+        {/* ---------------- GAME OVER ---------------- */}
         {mode === 'gameover' && (
           <div className="panel">
             <h3>Game Over</h3>
@@ -146,6 +147,7 @@ export default function ArenaPage() {
           </div>
         )}
 
+        {/* ---------------- LEADERBOARD ---------------- */}
         {mode !== 'playing' && <ArenaLeaderboard />}
       </main>
 
