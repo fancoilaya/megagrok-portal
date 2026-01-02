@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
+import ArenaLeaderboard from '../components/ArenaLeaderboard'
 
 export default function ArenaPage() {
   const gameRef = useRef(null)
