@@ -1,24 +1,20 @@
-import { kv } from '@vercel/kv'
+import { Redis } from '@upstash/redis'
 
-export const runtime = 'edge'
+const redis = new Redis({
+  url: process.env.KV_REST_API_URL,
+  token: process.env.KV_REST_API_TOKEN
+})
 
-export default async function handler(req) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return new Response(
-      JSON.stringify({ error: 'Method not allowed' }),
-      { status: 405 }
-    )
+    return res.status(405).json({ error: 'Method not allowed' })
   }
 
   try {
-    const body = await req.json()
-    const { wallet, name, score, wave, kills } = body
+    const { wallet, name, score, wave, kills } = req.body
 
     if (!wallet || typeof score !== 'number') {
-      return new Response(
-        JSON.stringify({ error: 'Invalid payload' }),
-        { status: 400 }
-      )
+      return res.status(400).json({ error: 'Invalid payload' })
     }
 
     const today = new Date().toISOString().slice(0, 10)
@@ -33,20 +29,14 @@ export default async function handler(req) {
       ts: Date.now()
     }
 
-    await kv.zadd(key, {
+    await redis.zadd(key, {
       score,
-      member: JSON.stringify(entry)
+      member: entry
     })
 
-    return new Response(
-      JSON.stringify({ success: true }),
-      { headers: { 'Content-Type': 'application/json' } }
-    )
+    res.status(200).json({ success: true })
   } catch (err) {
-    console.error('Submit error', err)
-    return new Response(
-      JSON.stringify({ error: 'Internal error' }),
-      { status: 500 }
-    )
+    console.error('Submit error:', err)
+    res.status(500).json({ error: err.message })
   }
 }
