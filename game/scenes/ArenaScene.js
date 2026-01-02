@@ -6,6 +6,15 @@ export default class ArenaScene extends Phaser.Scene {
     this.onGameOver = onGameOver
   }
 
+  preload() {
+    // Create a tiny projectile texture
+    const g = this.add.graphics()
+    g.fillStyle(0x66ccff, 1)
+    g.fillCircle(4, 4, 4)
+    g.generateTexture('proj', 8, 8)
+    g.destroy()
+  }
+
   create() {
     this.wave = 1
     this.score = 0
@@ -186,7 +195,6 @@ export default class ArenaScene extends Phaser.Scene {
       const dist = Phaser.Math.Distance.Between(e.x, e.y, this.player.x, this.player.y)
 
       if (e.type === 'ranged') {
-        // Ranged behavior: approach but never flee
         if (dist > 260) {
           this.physics.moveToObject(e, this.player, e.speed)
         } else {
@@ -198,7 +206,6 @@ export default class ArenaScene extends Phaser.Scene {
           this.fireProjectile(e)
         }
       } else {
-        // Normal mob
         this.physics.moveToObject(e, this.player, e.speed)
       }
 
@@ -223,12 +230,12 @@ export default class ArenaScene extends Phaser.Scene {
     }
   }
 
-  fireProjectile(enemy) {
-    const p = this.add.circle(enemy.x, enemy.y, 4, 0x66ccff)
-    this.physics.add.existing(p)
+  // ---------------- PROJECTILE ----------------
 
-    p.body.setAllowGravity(false)
-    p.body.setCircle(4)
+  fireProjectile(enemy) {
+    const p = this.physics.add.image(enemy.x, enemy.y, 'proj')
+    p.setCircle(4)
+    p.setCollideWorldBounds(false)
 
     const angle = Phaser.Math.Angle.Between(
       enemy.x,
