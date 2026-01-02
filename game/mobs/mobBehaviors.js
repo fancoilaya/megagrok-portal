@@ -1,27 +1,20 @@
 // game/mobs/mobBehaviors.js
-
 import Phaser from 'phaser'
 
 export function updateMob(scene, mob, player, delta) {
-  const dist = Phaser.Math.Distance.Between(
-    mob.x,
-    mob.y,
-    player.x,
-    player.y
-  )
+  // Movement (melee only for now)
+  scene.physics.moveToObject(mob, player, mob.speed)
 
-  switch (mob.behavior) {
-    case 'melee':
-      scene.physics.moveToObject(mob, player, mob.speed)
-      break
-  }
-
-  // HP bar sync
+  // HP bar follow
   mob.hpBar.setPosition(
     mob.x,
-    mob.y - (mob.body.radius + 6)
+    mob.y - (mob.size + 8)
   )
 
-  const barWidth = mob.body.radius * 2
-  mob.hpBar.width = (mob.hp / mob.maxHp) * barWidth
+  const maxWidth = mob.size * 1.6
+  mob.hpBar.width = Phaser.Math.Clamp(
+    (mob.hp / mob.maxHp) * maxWidth,
+    0,
+    maxWidth
+  )
 }
