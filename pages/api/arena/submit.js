@@ -1,15 +1,26 @@
 import { kv } from '@vercel/kv'
 
-export default async function handler(req, res) {
+export const config = {
+  runtime: 'edge'
+}
+
+export default async function handler(req) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' })
+    return new Response(
+      JSON.stringify({ error: 'Method not allowed' }),
+      { status: 405 }
+    )
   }
 
   try {
-    const { wallet, name, score, wave, kills } = req.body
+    const body = await req.json()
+    const { wallet, name, score, wave, kills } = body
 
     if (!wallet || typeof score !== 'number') {
-      return res.status(400).json({ error: 'Invalid payload' })
+      return new Response(
+        JSON.stringify({ error: 'Invalid payload' }),
+        { status: 400 }
+      )
     }
 
     const today = new Date().toISOString().slice(0, 10)
@@ -24,15 +35,20 @@ export default async function handler(req, res) {
       ts: Date.now()
     }
 
-    // Use score as the sorted-set score
     await kv.zadd(key, {
       score,
       member: JSON.stringify(entry)
     })
 
-    return res.status(200).json({ success: true })
+    return new Response(
+      JSON.stringify({ success: true }),
+      { status: 200 }
+    )
   } catch (err) {
     console.error('Submit error:', err)
-    return res.status(500).json({ error: 'Internal error' })
+    return new Response(
+      JSON.stringify({ error: 'Internal error' }),
+      { status: 500 }
+    )
   }
 }
