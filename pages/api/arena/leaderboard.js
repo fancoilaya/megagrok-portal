@@ -1,11 +1,14 @@
 import { kv } from '@vercel/kv'
 
-export default async function handler(req, res) {
+export const config = {
+  runtime: 'edge'
+}
+
+export default async function handler(req) {
   try {
     const today = new Date().toISOString().slice(0, 10)
     const key = `arena:daily:${today}`
 
-    // Top 25 scores, highest first
     const raw = await kv.zrange(key, 0, 24, { rev: true })
 
     const leaderboard = raw.map((item, index) => {
@@ -16,9 +19,15 @@ export default async function handler(req, res) {
       }
     })
 
-    return res.status(200).json({ leaderboard })
+    return new Response(
+      JSON.stringify({ leaderboard }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    )
   } catch (err) {
     console.error('Leaderboard error:', err)
-    return res.status(500).json({ error: 'Internal error' })
+    return new Response(
+      JSON.stringify({ error: 'Internal error' }),
+      { status: 500 }
+    )
   }
 }
