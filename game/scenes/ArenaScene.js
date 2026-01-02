@@ -7,45 +7,52 @@ export default class ArenaScene extends Phaser.Scene {
   }
 
   create() {
-    // Core state
+    // ---------------- CORE STATE ----------------
     this.wave = 1
     this.score = 0
     this.hp = 100
 
-    // Countdown state
+    // Countdown
     this.inCountdown = true
     this.countdownValue = 3
     this.countdownTimer = 0
 
-    // Player
+    // ---------------- PLAYER ----------------
     this.player = this.add.circle(400, 250, 14, 0xff7a00)
     this.physics.add.existing(this.player)
     this.player.body.setCollideWorldBounds(true)
 
-    // Enemies
+    // ---------------- ENEMIES ----------------
     this.enemies = this.physics.add.group()
 
-    // Keyboard (PC)
+    // ---------------- PC CONTROLS ----------------
     this.cursors = this.input.keyboard.createCursorKeys()
     this.keys = this.input.keyboard.addKeys('W,A,S,D,SPACE')
 
-    // ===== MOBILE CONTROLS =====
+    // ---------------- MOBILE JOYSTICK ----------------
     this.joystickBase = this.add.circle(90, 410, 35, 0x000000, 0.35).setScrollFactor(0)
     this.joystickThumb = this.add.circle(90, 410, 18, 0xffffff, 0.6).setScrollFactor(0)
-
-    this.attackButton = this.add.circle(710, 410, 32, 0xff7a00, 0.8).setScrollFactor(0)
-    this.attackIcon = this.add.text(702, 398, '🔥', { fontSize: 24 }).setScrollFactor(0)
 
     this.joystickVector = { x: 0, y: 0 }
     this.activePointerId = null
 
+    // ---------------- ATTACK BUTTON ----------------
+    this.attackButton = this.add
+      .circle(710, 410, 32, 0xff7a00, 0.8)
+      .setScrollFactor(0)
+      .setInteractive()
+
+    this.attackIcon = this.add.text(702, 398, '🔥', { fontSize: 24 }).setScrollFactor(0)
+
+    this.attackButton.on('pointerdown', () => {
+      if (!this.inCountdown) this.attack()
+    })
+
+    // ---------------- POINTER HANDLING ----------------
     this.input.on('pointerdown', (pointer) => {
       if (this.inCountdown) return
-
       if (pointer.x < this.scale.width / 2) {
         this.activePointerId = pointer.id
-      } else {
-        this.attack()
       }
     })
 
@@ -74,21 +81,16 @@ export default class ArenaScene extends Phaser.Scene {
       }
     })
 
-    // UI
+    // ---------------- UI ----------------
     this.ui = this.add.text(10, 10, '', { fontSize: 14, color: '#fff' }).setScrollFactor(0)
 
     this.countdownText = this.add.text(
       this.scale.width / 2,
       this.scale.height / 2,
       '',
-      {
-        fontSize: '48px',
-        color: '#ffffff',
-        fontStyle: 'bold'
-      }
+      { fontSize: '48px', color: '#fff', fontStyle: 'bold', align: 'center' }
     ).setOrigin(0.5).setScrollFactor(0)
 
-    // Start first countdown
     this.startCountdown()
   }
 
@@ -128,16 +130,23 @@ export default class ArenaScene extends Phaser.Scene {
     const count = Math.min(3 + this.wave, 10)
 
     for (let i = 0; i < count; i++) {
-      const e = this.add.circle(
+      const enemy = this.add.circle(
         Phaser.Math.Between(50, 750),
         Phaser.Math.Between(50, 450),
         12,
         0xff4444
       )
-      this.physics.add.existing(e)
-      e.hp = 20 + this.wave * 5
-      e.speed = 40 + this.wave * 6
-      this.enemies.add(e)
+      this.physics.add.existing(enemy)
+
+      enemy.maxHp = 20 + this.wave * 5
+      enemy.hp = enemy.maxHp
+      enemy.speed = 40 + this.wave * 6
+
+      // HP bar
+      enemy.hpBarBg = this.add.rectangle(enemy.x, enemy.y - 18, 20, 4, 0x000000)
+      enemy.hpBar = this.add.rectangle(enemy.x, enemy.y - 18, 20, 4, 0xff0000)
+
+      this.enemies.add(enemy)
     }
   }
 
@@ -153,9 +162,7 @@ export default class ArenaScene extends Phaser.Scene {
     let minDist = Infinity
 
     enemies.forEach(e => {
-      const d = Phaser.Math.Distance.Between(
-        this.player.x, this.player.y, e.x, e.y
-      )
+      const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, e.x, e.y)
       if (d < minDist) {
         minDist = d
         closest = e
@@ -163,8 +170,30 @@ export default class ArenaScene extends Phaser.Scene {
     })
 
     if (closest && minDist < 120) {
-      closest.hp -= 12
+      const dmg = 12
+      closest.hp -= dmg
+
+      // Hit flash
+      closest.setFillStyle(0xff8888)
+      this.time.delayedCall(80, () => closest.setFillStyle(0xff4444))
+
+      // Damage number
+      const txt = this.add.text(closest.x, closest.y - 10, `-${dmg}`, {
+        fontSize: '14px',
+        color: '#ffffff'
+      }).setOrigin(0.5)
+
+      this.tweens.add({
+        targets: txt,
+        y: txt.y - 20,
+        alpha: 0,
+        duration: 600,
+        onComplete: () => txt.destroy()
+      })
+
       if (closest.hp <= 0) {
+        closest.hpBar.destroy()
+        closest.hpBarBg.destroy()
         closest.destroy()
         this.score += 100
       }
@@ -182,28 +211,28 @@ export default class ArenaScene extends Phaser.Scene {
       let vx = 0
       let vy = 0
 
-      // PC movement
       if (this.cursors.left.isDown || this.keys.A.isDown) vx -= speed
       if (this.cursors.right.isDown || this.keys.D.isDown) vx += speed
       if (this.cursors.up.isDown || this.keys.W.isDown) vy -= speed
       if (this.cursors.down.isDown || this.keys.S.isDown) vy += speed
 
-      // Mobile joystick
       vx += this.joystickVector.x * speed
       vy += this.joystickVector.y * speed
 
       this.player.body.setVelocity(vx, vy)
 
-      if (this.keys.SPACE.isDown) {
-        this.attack()
-      }
+      if (this.keys.SPACE.isDown) this.attack()
 
       this.enemies.getChildren().forEach(e => {
         this.physics.moveToObject(e, this.player, e.speed)
+
+        // Update HP bars
+        e.hpBarBg.setPosition(e.x, e.y - 18)
+        e.hpBar.setPosition(e.x - 10 + (e.hp / e.maxHp) * 10, e.y - 18)
+        e.hpBar.width = (e.hp / e.maxHp) * 20
+
         if (
-          Phaser.Math.Distance.Between(
-            e.x, e.y, this.player.x, this.player.y
-          ) < 20
+          Phaser.Math.Distance.Between(e.x, e.y, this.player.x, this.player.y) < 20
         ) {
           this.hp -= 0.03 * delta
         }
@@ -220,10 +249,7 @@ export default class ArenaScene extends Phaser.Scene {
     )
 
     if (this.hp <= 0) {
-      this.onGameOver({
-        score: this.score,
-        wave: this.wave
-      })
+      this.onGameOver({ score: this.score, wave: this.wave })
       this.scene.stop()
     }
   }
