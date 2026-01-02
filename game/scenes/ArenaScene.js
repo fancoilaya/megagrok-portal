@@ -15,6 +15,10 @@ export default class ArenaScene extends Phaser.Scene {
     this.countdownValue = 3
     this.countdownTimer = 0
 
+    // Attack control
+    this.canAttack = true
+    this.attackCooldown = 150 // ms
+
     // Player
     this.player = this.add.circle(400, 250, 14, 0xff7a00)
     this.physics.add.existing(this.player)
@@ -42,10 +46,10 @@ export default class ArenaScene extends Phaser.Scene {
     this.attackIcon = this.add.text(702, 398, '🔥', { fontSize: 24 }).setScrollFactor(0)
 
     this.attackButton.on('pointerdown', () => {
-      if (!this.inCountdown) this.attack()
+      this.tryAttack()
     })
 
-    // Pointer logic
+    // Pointer handling
     this.input.on('pointerdown', (pointer) => {
       if (this.inCountdown) return
       if (pointer.x < this.scale.width / 2) this.activePointerId = pointer.id
@@ -85,6 +89,8 @@ export default class ArenaScene extends Phaser.Scene {
     this.startCountdown()
   }
 
+  // ---------------- COUNTDOWN ----------------
+
   startCountdown() {
     this.inCountdown = true
     this.countdownValue = 3
@@ -111,6 +117,8 @@ export default class ArenaScene extends Phaser.Scene {
     }
   }
 
+  // ---------------- WAVE ----------------
+
   spawnWave() {
     this.enemies.clear(true, true)
 
@@ -129,7 +137,6 @@ export default class ArenaScene extends Phaser.Scene {
       e.hp = e.maxHp
       e.speed = 40 + this.wave * 6
 
-      // HP bar
       e.hpBarBg = this.add.rectangle(e.x, e.y - 18, 20, 4, 0x000000).setDepth(5)
       e.hpBar = this.add.rectangle(e.x - 10, e.y - 18, 20, 4, 0xff0000)
         .setOrigin(0, 0.5)
@@ -137,6 +144,18 @@ export default class ArenaScene extends Phaser.Scene {
 
       this.enemies.add(e)
     }
+  }
+
+  // ---------------- ATTACK ----------------
+
+  tryAttack() {
+    if (!this.canAttack || this.inCountdown) return
+    this.canAttack = false
+    this.attack()
+
+    this.time.delayedCall(this.attackCooldown, () => {
+      this.canAttack = true
+    })
   }
 
   attack() {
@@ -159,21 +178,12 @@ export default class ArenaScene extends Phaser.Scene {
     const dmg = Phaser.Math.Between(10, 14)
     closest.hp -= dmg
 
-    // Flash + scale punch
     closest.setFillStyle(0xffaaaa)
-    this.tweens.add({
-      targets: closest,
-      scale: 1.15,
-      yoyo: true,
-      duration: 80
-    })
+    this.tweens.add({ targets: closest, scale: 1.15, yoyo: true, duration: 80 })
     this.time.delayedCall(80, () => closest.setFillStyle(0xff4444))
 
-    // Damage number
     const txt = this.add.text(
-      closest.x,
-      closest.y - 10,
-      `-${dmg}`,
+      closest.x, closest.y - 10, `-${dmg}`,
       { fontSize: '16px', color: '#ffffff' }
     ).setOrigin(0.5).setDepth(10)
 
@@ -192,6 +202,8 @@ export default class ArenaScene extends Phaser.Scene {
       this.score += 100
     }
   }
+
+  // ---------------- UPDATE ----------------
 
   update(_, delta) {
     if (this.inCountdown) {
@@ -214,12 +226,11 @@ export default class ArenaScene extends Phaser.Scene {
 
     this.player.body.setVelocity(vx, vy)
 
-    if (this.keys.SPACE.isDown) this.attack()
+    if (this.keys.SPACE.isDown) this.tryAttack()
 
     this.enemies.getChildren().forEach(e => {
       this.physics.moveToObject(e, this.player, e.speed)
 
-      // Update HP bars
       e.hpBarBg.setPosition(e.x, e.y - 18)
       e.hpBar.setPosition(e.x - 10, e.y - 18)
       e.hpBar.width = (e.hp / e.maxHp) * 20
