@@ -34,12 +34,11 @@ export default class ArenaScene extends Phaser.Scene {
     this.keys = this.input.keyboard.addKeys('W,A,S,D,SPACE')
 
     // UI
-    this.uiText = this.add.text(10, 10, '', { fontSize: '14px', color: '#fff' }).setDepth(100)
-    this.countdownText = this.add.text(400, 250, '', {
-      fontSize: '48px',
-      fontStyle: 'bold',
-      color: '#fff'
-    }).setOrigin(0.5).setDepth(100)
+    this.uiText = this.add.text(10, 10, '', { fontSize: 14, color: '#fff' }).setDepth(100)
+    this.countdownText = this.add.text(
+      400, 250, '',
+      { fontSize: '48px', fontStyle: 'bold', color: '#fff' }
+    ).setOrigin(0.5).setDepth(100)
 
     // Mobile joystick
     this.joyBase = this.add.circle(110, 390, 55, 0x000000, 0.35).setScrollFactor(0).setDepth(100)
@@ -52,11 +51,10 @@ export default class ArenaScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(100)
       .setInteractive()
-
-    this.add.text(676, 372, '🔥', { fontSize: '34px' }).setScrollFactor(0).setDepth(101)
+    this.add.text(676, 372, '🔥', { fontSize: 34 }).setScrollFactor(0).setDepth(101)
     this.attackBtn.on('pointerdown', () => this.tryAttack())
 
-    // Touch handling
+    // Touch input
     this.input.on('pointerdown', p => {
       if (p.x < this.scale.width / 2 && this.joyPointerId === null) {
         this.joyPointerId = p.id
@@ -156,6 +154,21 @@ export default class ArenaScene extends Phaser.Scene {
     const dmg = Phaser.Math.Between(10, 14)
     closest.hp -= dmg
 
+    // Slash visual
+    const g = this.add.graphics().setDepth(150)
+    g.lineStyle(3, 0xffaa00, 1)
+    g.beginPath()
+    g.moveTo(this.player.x, this.player.y)
+    g.lineTo(closest.x, closest.y)
+    g.strokePath()
+    this.tweens.add({
+      targets: g,
+      alpha: 0,
+      duration: 120,
+      onComplete: () => g.destroy()
+    })
+
+    // Damage number
     const txt = this.add.text(
       closest.x,
       closest.y - closest.size - 16,
@@ -182,6 +195,38 @@ export default class ArenaScene extends Phaser.Scene {
       closest.destroy()
       this.score += 100
     }
+  }
+
+  applyPlayerHit(dmg) {
+    this.playerHp -= dmg
+
+    const txt = this.add.text(
+      this.player.x,
+      this.player.y - 20,
+      `-${dmg}`,
+      {
+        fontSize: '16px',
+        color: '#ff6666',
+        fontStyle: 'bold',
+        stroke: '#000',
+        strokeThickness: 3
+      }
+    ).setOrigin(0.5).setDepth(300)
+
+    this.tweens.add({
+      targets: txt,
+      y: txt.y - 20,
+      alpha: 0,
+      duration: 600,
+      onComplete: () => txt.destroy()
+    })
+
+    this.tweens.add({
+      targets: this.player,
+      alpha: 0.3,
+      duration: 80,
+      yoyo: true
+    })
   }
 
   update(_, delta) {
@@ -216,12 +261,13 @@ export default class ArenaScene extends Phaser.Scene {
 
     this.enemies.getChildren().forEach(e => {
       updateMob(this, e, this.player)
+
       const dist = Phaser.Math.Distance.Between(e.x, e.y, this.player.x, this.player.y)
       if (dist <= e.attackRange) {
         const now = this.time.now
-        if (now - e.lastAttack > 600) {
+        if (now - e.lastAttack > 700) {
           e.lastAttack = now
-          this.playerHp -= e.damage
+          this.applyPlayerHit(e.damage)
         }
       }
     })
@@ -231,7 +277,9 @@ export default class ArenaScene extends Phaser.Scene {
       this.startCountdown()
     }
 
-    this.uiText.setText(`❤️ ${Math.floor(this.playerHp)}   🌊 Wave ${this.wave}   🏆 ${this.score}`)
+    this.uiText.setText(
+      `❤️ ${Math.floor(this.playerHp)}   🌊 Wave ${this.wave}   🏆 ${this.score}`
+    )
 
     if (this.playerHp <= 0) {
       this.onGameOver({ score: this.score, wave: this.wave })
