@@ -12,11 +12,15 @@ export default function ArenaPage() {
   const [name, setName] = useState('')
   const [wallet, setWallet] = useState('')
 
-  // 🚫 DO NOT TIE PHASER TO MODE CHANGES
+  // 🔒 Create Phaser ONCE. Never tie to mode.
   useEffect(() => {
     if (gameRef.current) return
 
+    let destroyed = false
+
     import('../game/index').then(({ startArenaGame }) => {
+      if (destroyed) return
+
       gameRef.current = startArenaGame(
         'arena-container',
         ({ score, wave }) => {
@@ -28,6 +32,7 @@ export default function ArenaPage() {
     })
 
     return () => {
+      destroyed = true
       if (gameRef.current) {
         gameRef.current.destroy(true)
         gameRef.current = null
@@ -37,8 +42,11 @@ export default function ArenaPage() {
 
   function startGame() {
     setMode('playing')
-    if (gameRef.current?.scene?.keys?.ArenaScene) {
-      gameRef.current.scene.keys.ArenaScene.scene.restart()
+
+    // restart scene safely
+    const scene = gameRef.current?.scene?.keys?.ArenaScene
+    if (scene) {
+      scene.scene.restart()
     }
   }
 
@@ -80,20 +88,24 @@ export default function ArenaPage() {
               📱 Virtual joystick + attack button
             </p>
 
-            <button className="cta-primary" onClick={startGame}>
+            <button
+              className="cta-primary"
+              onClick={startGame}
+            >
               ▶ START ARENA
             </button>
           </div>
         )}
 
-        {/* Phaser container ALWAYS exists */}
+        {/* 🔥 Phaser container MUST ALWAYS EXIST */}
         <div
           id="arena-container"
           style={{
             width: '100%',
             maxWidth: 900,
+            height: 500,
             margin: '0 auto',
-            display: mode === 'playing' ? 'block' : 'none'
+            visibility: mode === 'playing' ? 'visible' : 'hidden'
           }}
         />
 
@@ -118,11 +130,17 @@ export default function ArenaPage() {
               onChange={e => setWallet(e.target.value)}
             />
 
-            <button className="cta-primary" onClick={submitScore}>
+            <button
+              className="cta-primary"
+              onClick={submitScore}
+            >
               Submit Score
             </button>
 
-            <button className="cta-secondary" onClick={() => setMode('idle')}>
+            <button
+              className="cta-secondary"
+              onClick={() => setMode('idle')}
+            >
               Play Again
             </button>
           </div>
