@@ -3,7 +3,6 @@ import { MOB_TYPES } from './mobRegistry'
 
 export function spawnMob(scene, typeKey, x, y) {
   const def = MOB_TYPES[typeKey]
-  if (!def) throw new Error(`Unknown mob type: ${typeKey}`)
 
   const mob = scene.add.circle(x, y, def.size, def.color)
   mob.setDepth(10)
@@ -18,10 +17,9 @@ export function spawnMob(scene, typeKey, x, y) {
   mob.damage = def.damage
   mob.size = def.size
   mob.attackRange = def.attackRange
-  mob.followRange = def.followRange
   mob.lastAttack = 0
 
-  // HP bar
+  // HP BAR
   mob.hpBar = scene.add.rectangle(
     mob.x,
     mob.y - (def.size + 10),
