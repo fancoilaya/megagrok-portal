@@ -31,61 +31,17 @@ export default class ArenaScene extends Phaser.Scene {
     this.cursors = this.input.keyboard.createCursorKeys()
     this.keys = this.input.keyboard.addKeys('W,A,S,D,SPACE')
 
-    // Mobile joystick
-    this.joystickBase = this.add.circle(90, 410, 35, 0x000000, 0.35).setScrollFactor(0)
-    this.joystickThumb = this.add.circle(90, 410, 18, 0xffffff, 0.6).setScrollFactor(0)
-    this.joystickVector = { x: 0, y: 0 }
-    this.activePointerId = null
-
-    // Attack button
-    this.attackButton = this.add.circle(710, 410, 32, 0xff7a00, 0.8)
-      .setScrollFactor(0)
-      .setInteractive()
-    this.attackIcon = this.add.text(702, 398, '🔥', { fontSize: 24 }).setScrollFactor(0)
-    this.attackButton.on('pointerdown', () => this.tryAttack())
-
-    // Touch input
-    this.input.on('pointerdown', p => {
-      if (!this.inCountdown && p.x < this.scale.width / 2) {
-        this.activePointerId = p.id
-      }
-    })
-
-    this.input.on('pointermove', p => {
-      if (p.id !== this.activePointerId) return
-
-      const dx = p.x - this.joystickBase.x
-      const dy = p.y - this.joystickBase.y
-      const dist = Math.min(Math.hypot(dx, dy), 30)
-      const ang = Math.atan2(dy, dx)
-
-      this.joystickThumb.setPosition(
-        this.joystickBase.x + Math.cos(ang) * dist,
-        this.joystickBase.y + Math.sin(ang) * dist
-      )
-
-      this.joystickVector.x = Math.cos(ang) * (dist / 30)
-      this.joystickVector.y = Math.sin(ang) * (dist / 30)
-    })
-
-    this.input.on('pointerup', () => {
-      this.activePointerId = null
-      this.joystickThumb.setPosition(this.joystickBase.x, this.joystickBase.y)
-      this.joystickVector.x = 0
-      this.joystickVector.y = 0
-    })
-
-    // Projectile hit player
-    this.physics.add.overlap(this.player, this.projectiles, (_, proj) => {
-      proj.destroy()
-      this.hp -= 8
-    })
-
     // UI
     this.ui = this.add.text(10, 10, '', { fontSize: 14, color: '#fff' })
     this.countdownText = this.add.text(
       400, 250, '', { fontSize: '48px', color: '#fff', fontStyle: 'bold' }
     ).setOrigin(0.5)
+
+    // Projectile hits player
+    this.physics.add.overlap(this.player, this.projectiles, (_, p) => {
+      p.destroy()
+      this.hp -= 8
+    })
 
     this.startCountdown()
   }
@@ -212,8 +168,8 @@ export default class ArenaScene extends Phaser.Scene {
 
     // Player movement
     const speed = 180
-    let vx = this.joystickVector.x * speed
-    let vy = this.joystickVector.y * speed
+    let vx = 0
+    let vy = 0
 
     if (this.cursors.left.isDown || this.keys.A.isDown) vx -= speed
     if (this.cursors.right.isDown || this.keys.D.isDown) vx += speed
@@ -226,16 +182,13 @@ export default class ArenaScene extends Phaser.Scene {
 
     const now = this.time.now
 
-    // Enemies
     this.enemies.getChildren().forEach(e => {
       const dist = Phaser.Math.Distance.Between(e.x, e.y, this.player.x, this.player.y)
 
       if (e.type === 'ranged') {
-        // Follow but keep long distance
+        // Ranged behavior: approach but never flee
         if (dist > 260) {
           this.physics.moveToObject(e, this.player, e.speed)
-        } else if (dist < 200) {
-          this.physics.moveToObject(e, this.player, -e.speed)
         } else {
           e.body.setVelocity(0, 0)
         }
@@ -274,7 +227,9 @@ export default class ArenaScene extends Phaser.Scene {
     const p = this.add.circle(enemy.x, enemy.y, 4, 0x66ccff)
     this.physics.add.existing(p)
 
-    // Aim once at launch
+    p.body.setAllowGravity(false)
+    p.body.setCircle(4)
+
     const angle = Phaser.Math.Angle.Between(
       enemy.x,
       enemy.y,
@@ -284,12 +239,9 @@ export default class ArenaScene extends Phaser.Scene {
 
     this.physics.velocityFromRotation(angle, 260, p.body.velocity)
 
-    p.body.setCollideWorldBounds(true)
-    p.body.onWorldBounds = true
-
     this.projectiles.add(p)
 
-    this.time.delayedCall(4000, () => {
+    this.time.delayedCall(5000, () => {
       if (p.active) p.destroy()
     })
   }
