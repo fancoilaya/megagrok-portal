@@ -7,11 +7,11 @@ export default class ArenaScene extends Phaser.Scene {
   }
 
   preload() {
-    // Create a tiny projectile texture
+    // projectile texture (sprite, not shape)
     const g = this.add.graphics()
     g.fillStyle(0x66ccff, 1)
     g.fillCircle(4, 4, 4)
-    g.generateTexture('proj', 8, 8)
+    g.generateTexture('bullet', 8, 8)
     g.destroy()
   }
 
@@ -61,7 +61,8 @@ export default class ArenaScene extends Phaser.Scene {
     this.inCountdown = true
     this.countdownValue = 3
     this.countdownTimer = 0
-    this.countdownText.setText(`WAVE ${this.wave}\n${this.countdownValue}`)
+    const label = this.wave % 5 === 0 ? 'BOSS WAVE' : `WAVE ${this.wave}`
+    this.countdownText.setText(`${label}\n${this.countdownValue}`)
   }
 
   updateCountdown(delta) {
@@ -70,7 +71,8 @@ export default class ArenaScene extends Phaser.Scene {
       this.countdownTimer = 0
       this.countdownValue--
       if (this.countdownValue > 0) {
-        this.countdownText.setText(`WAVE ${this.wave}\n${this.countdownValue}`)
+        const label = this.wave % 5 === 0 ? 'BOSS WAVE' : `WAVE ${this.wave}`
+        this.countdownText.setText(`${label}\n${this.countdownValue}`)
       } else {
         this.countdownText.setText('')
         this.inCountdown = false
@@ -85,12 +87,30 @@ export default class ArenaScene extends Phaser.Scene {
     this.enemies.clear(true, true)
     this.projectiles.clear(true, true)
 
-    const count = Math.min(3 + this.wave, 10)
+    if (this.wave % 5 === 0) {
+      this.spawnBoss()
+      return
+    }
 
+    const count = Math.min(3 + this.wave, 10)
     for (let i = 0; i < count; i++) {
-      const type = this.wave >= 3 && Math.random() < 0.35 ? 'ranged' : 'normal'
+      const type = this.wave >= 3 && Math.random() < 0.3 ? 'ranged' : 'normal'
       this.spawnEnemy(type)
     }
+  }
+
+  spawnBoss() {
+    const e = this.add.circle(400, 120, 26, 0x8b0000)
+    this.physics.add.existing(e)
+    e.body.setCollideWorldBounds(true)
+
+    e.type = 'boss'
+    e.hp = 400 + this.wave * 50
+    e.maxHp = e.hp
+    e.speed = 40
+
+    e.hpBar = this.add.rectangle(e.x, e.y - 36, 50, 6, 0xff0000).setOrigin(0.5)
+    this.enemies.add(e)
   }
 
   spawnEnemy(type) {
@@ -108,13 +128,11 @@ export default class ArenaScene extends Phaser.Scene {
     e.type = type
     e.hp = 40 + this.wave * this.wave * 4
     e.maxHp = e.hp
-    e.speed = isRanged ? 60 : 80
+    e.speed = isRanged ? 55 : 80
     e.lastShot = 0
     e.fireRate = 1400 + Math.random() * 600
 
-    e.hpBar = this.add.rectangle(e.x, e.y - 18, 20, 4, 0xff0000)
-      .setOrigin(0.5)
-
+    e.hpBar = this.add.rectangle(e.x, e.y - 18, 20, 4, 0xff0000).setOrigin(0.5)
     this.enemies.add(e)
   }
 
@@ -144,25 +162,22 @@ export default class ArenaScene extends Phaser.Scene {
 
     if (!closest || minDist > 150) return
 
-    closest.hp -= Phaser.Math.Between(10, 14)
+    const dmg = Phaser.Math.Between(10, 14)
+    closest.hp -= dmg
 
+    // visual slash
     const line = this.add.graphics()
     line.lineStyle(3, 0xffaa00, 1)
     line.beginPath()
     line.moveTo(this.player.x, this.player.y)
     line.lineTo(closest.x, closest.y)
     line.strokePath()
-    this.tweens.add({
-      targets: line,
-      alpha: 0,
-      duration: 120,
-      onComplete: () => line.destroy()
-    })
+    this.tweens.add({ targets: line, alpha: 0, duration: 120, onComplete: () => line.destroy() })
 
     if (closest.hp <= 0) {
       closest.hpBar.destroy()
       closest.destroy()
-      this.score += 100
+      this.score += closest.type === 'boss' ? 1000 : 100
     }
   }
 
@@ -179,12 +194,10 @@ export default class ArenaScene extends Phaser.Scene {
     const speed = 180
     let vx = 0
     let vy = 0
-
     if (this.cursors.left.isDown || this.keys.A.isDown) vx -= speed
     if (this.cursors.right.isDown || this.keys.D.isDown) vx += speed
     if (this.cursors.up.isDown || this.keys.W.isDown) vy -= speed
     if (this.cursors.down.isDown || this.keys.S.isDown) vy += speed
-
     this.player.body.setVelocity(vx, vy)
 
     if (this.keys.SPACE.isDown) this.tryAttack()
@@ -209,10 +222,12 @@ export default class ArenaScene extends Phaser.Scene {
         this.physics.moveToObject(e, this.player, e.speed)
       }
 
-      e.hpBar.setPosition(e.x, e.y - 18)
-      e.hpBar.width = (e.hp / e.maxHp) * 20
+      const barWidth = e.type === 'boss' ? 50 : 20
+      const yOffset = e.type === 'boss' ? 36 : 18
+      e.hpBar.setPosition(e.x, e.y - yOffset)
+      e.hpBar.width = (e.hp / e.maxHp) * barWidth
 
-      if (dist < 18) {
+      if (dist < 18 && e.type !== 'ranged') {
         this.hp -= 0.05 * delta
       }
     })
@@ -233,7 +248,7 @@ export default class ArenaScene extends Phaser.Scene {
   // ---------------- PROJECTILE ----------------
 
   fireProjectile(enemy) {
-    const p = this.physics.add.image(enemy.x, enemy.y, 'proj')
+    const p = this.physics.add.image(enemy.x, enemy.y, 'bullet')
     p.setCircle(4)
     p.setCollideWorldBounds(false)
 
@@ -244,8 +259,7 @@ export default class ArenaScene extends Phaser.Scene {
       this.player.y
     )
 
-    this.physics.velocityFromRotation(angle, 260, p.body.velocity)
-
+    this.physics.velocityFromRotation(angle, 280, p.body.velocity)
     this.projectiles.add(p)
 
     this.time.delayedCall(5000, () => {
