@@ -1,32 +1,37 @@
 import { useEffect, useRef, useState } from 'react'
-import dynamic from 'next/dynamic'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
 import ArenaLeaderboard from '../components/ArenaLeaderboard'
 
 export default function ArenaPage() {
   const gameRef = useRef(null)
-  const containerRef = useRef(null)
 
-  const [mode, setMode] = useState('idle')
-  const [score, setScore] = useState(null)
+  const [mode, setMode] = useState('idle') // idle | playing | gameover
+  const [score, setScore] = useState(0)
+  const [finalWave, setFinalWave] = useState(0)
   const [name, setName] = useState('')
   const [wallet, setWallet] = useState('')
 
   useEffect(() => {
     if (mode !== 'playing') return
 
-    let gameInstance
+    let destroyed = false
 
     import('../game/index').then(({ startArenaGame }) => {
-      gameInstance = startArenaGame('arena-container', (finalScore) => {
-        setScore(finalScore)
-        setMode('gameover')
-      })
-      gameRef.current = gameInstance
+      if (destroyed) return
+
+      gameRef.current = startArenaGame(
+        'arena-container',
+        ({ score, wave }) => {
+          setScore(score)
+          setFinalWave(wave)
+          setMode('gameover')
+        }
+      )
     })
 
     return () => {
+      destroyed = true
       if (gameRef.current) {
         gameRef.current.destroy(true)
         gameRef.current = null
@@ -35,7 +40,7 @@ export default function ArenaPage() {
   }, [mode])
 
   async function submitScore() {
-    if (!wallet || score === null) return
+    if (!wallet) return
 
     await fetch('/api/arena/submit', {
       method: 'POST',
@@ -43,12 +48,14 @@ export default function ArenaPage() {
       body: JSON.stringify({
         wallet,
         name,
-        score
+        score,
+        wave: finalWave
       })
     })
 
     setMode('idle')
-    setScore(null)
+    setScore(0)
+    setFinalWave(0)
     setName('')
     setWallet('')
   }
@@ -67,7 +74,7 @@ export default function ArenaPage() {
           <div className="panel">
             <p>
               🖥 WASD / Arrows + Space<br />
-              📱 Touch = attack (joystick coming next)
+              📱 Virtual joystick + attack button
             </p>
 
             <button
@@ -82,7 +89,6 @@ export default function ArenaPage() {
         {mode === 'playing' && (
           <div
             id="arena-container"
-            ref={containerRef}
             style={{
               width: '100%',
               maxWidth: 900,
@@ -91,11 +97,14 @@ export default function ArenaPage() {
           />
         )}
 
-        {mode !== 'playing' && <ArenaLeaderboard />}
         {mode === 'gameover' && (
           <div className="panel">
             <h3>Game Over</h3>
-            <p>Your Score: <b>{score}</b></p>
+
+            <p>
+              🏆 Score: <b>{score}</b><br />
+              🌊 Wave reached: <b>{finalWave}</b>
+            </p>
 
             <input
               placeholder="Name (optional)"
@@ -124,6 +133,8 @@ export default function ArenaPage() {
             </button>
           </div>
         )}
+
+        {mode !== 'playing' && <ArenaLeaderboard />}
       </main>
 
       <Footer />
