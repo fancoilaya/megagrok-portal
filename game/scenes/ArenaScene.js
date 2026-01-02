@@ -19,23 +19,56 @@ export default class ArenaScene extends Phaser.Scene {
     // Enemies
     this.enemies = this.physics.add.group()
 
-    // Controls
+    // Keyboard (PC)
     this.cursors = this.input.keyboard.createCursorKeys()
     this.keys = this.input.keyboard.addKeys('W,A,S,D,SPACE')
 
-    // Mobile input
+    // ===== MOBILE CONTROLS =====
+    this.joystickBase = this.add.circle(90, 410, 35, 0x000000, 0.35).setScrollFactor(0)
+    this.joystickThumb = this.add.circle(90, 410, 18, 0xffffff, 0.6).setScrollFactor(0)
+
+    this.attackButton = this.add.circle(710, 410, 32, 0xff7a00, 0.8).setScrollFactor(0)
+    this.attackIcon = this.add.text(702, 398, '🔥', { fontSize: 24 }).setScrollFactor(0)
+
     this.joystickVector = { x: 0, y: 0 }
-    this.input.on('pointerdown', () => {
-      this.attack()
+    this.activePointerId = null
+
+    this.input.on('pointerdown', (pointer) => {
+      if (pointer.x < this.scale.width / 2) {
+        this.activePointerId = pointer.id
+      } else {
+        this.attack()
+      }
     })
 
-    this.spawnWave()
+    this.input.on('pointermove', (pointer) => {
+      if (pointer.id !== this.activePointerId) return
+
+      const dx = pointer.x - this.joystickBase.x
+      const dy = pointer.y - this.joystickBase.y
+      const dist = Math.min(Math.hypot(dx, dy), 30)
+
+      const angle = Math.atan2(dy, dx)
+      this.joystickThumb.x = this.joystickBase.x + Math.cos(angle) * dist
+      this.joystickThumb.y = this.joystickBase.y + Math.sin(angle) * dist
+
+      this.joystickVector.x = Math.cos(angle) * (dist / 30)
+      this.joystickVector.y = Math.sin(angle) * (dist / 30)
+    })
+
+    this.input.on('pointerup', (pointer) => {
+      if (pointer.id === this.activePointerId) {
+        this.activePointerId = null
+        this.joystickThumb.setPosition(this.joystickBase.x, this.joystickBase.y)
+        this.joystickVector.x = 0
+        this.joystickVector.y = 0
+      }
+    })
 
     // UI
-    this.ui = this.add.text(10, 10, '', {
-      fontSize: '14px',
-      color: '#ffffff'
-    })
+    this.ui = this.add.text(10, 10, '', { fontSize: 14, color: '#fff' }).setScrollFactor(0)
+
+    this.spawnWave()
   }
 
   spawnWave() {
@@ -52,19 +85,34 @@ export default class ArenaScene extends Phaser.Scene {
       )
       this.physics.add.existing(e)
       e.hp = 20 + this.wave * 5
-      e.speed = 40 + this.wave * 5
+      e.speed = 40 + this.wave * 6
       this.enemies.add(e)
     }
   }
 
   attack() {
-    const enemy = this.enemies.getChildren()[0]
-    if (!enemy) return
+    const enemies = this.enemies.getChildren()
+    if (!enemies.length) return
 
-    enemy.hp -= 10
-    if (enemy.hp <= 0) {
-      enemy.destroy()
-      this.score += 100
+    let closest = null
+    let minDist = Infinity
+
+    enemies.forEach(e => {
+      const d = Phaser.Math.Distance.Between(
+        this.player.x, this.player.y, e.x, e.y
+      )
+      if (d < minDist) {
+        minDist = d
+        closest = e
+      }
+    })
+
+    if (closest && minDist < 120) {
+      closest.hp -= 12
+      if (closest.hp <= 0) {
+        closest.destroy()
+        this.score += 100
+      }
     }
   }
 
@@ -73,19 +121,28 @@ export default class ArenaScene extends Phaser.Scene {
     let vx = 0
     let vy = 0
 
+    // PC movement
     if (this.cursors.left.isDown || this.keys.A.isDown) vx -= speed
     if (this.cursors.right.isDown || this.keys.D.isDown) vx += speed
     if (this.cursors.up.isDown || this.keys.W.isDown) vy -= speed
     if (this.cursors.down.isDown || this.keys.S.isDown) vy += speed
 
+    // Mobile joystick movement
+    vx += this.joystickVector.x * speed
+    vy += this.joystickVector.y * speed
+
     this.player.body.setVelocity(vx, vy)
+
+    if (this.keys.SPACE.isDown) {
+      this.attack()
+    }
 
     this.enemies.getChildren().forEach(e => {
       this.physics.moveToObject(e, this.player, e.speed)
       if (Phaser.Math.Distance.Between(
         e.x, e.y, this.player.x, this.player.y
       ) < 20) {
-        this.hp -= 0.05 * delta
+        this.hp -= 0.03 * delta
       }
     })
 
@@ -95,7 +152,7 @@ export default class ArenaScene extends Phaser.Scene {
     }
 
     this.ui.setText(
-      `❤️ ${Math.floor(this.hp)}  🌊 Wave ${this.wave}  🏆 ${this.score}`
+      `❤️ ${Math.floor(this.hp)}   🌊 Wave ${this.wave}   🏆 ${this.score}`
     )
 
     if (this.hp <= 0) {
