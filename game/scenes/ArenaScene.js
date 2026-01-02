@@ -40,7 +40,6 @@ export default class ArenaScene extends Phaser.Scene {
     this.attackButton = this.add.circle(710, 410, 32, 0xff7a00, 0.8)
       .setScrollFactor(0)
       .setInteractive()
-
     this.attackIcon = this.add.text(702, 398, '🔥', { fontSize: 24 }).setScrollFactor(0)
     this.attackButton.on('pointerdown', () => this.tryAttack())
 
@@ -77,19 +76,21 @@ export default class ArenaScene extends Phaser.Scene {
     // UI
     this.ui = this.add.text(10, 10, '', { fontSize: 14, color: '#fff' })
     this.countdownText = this.add.text(400, 250, '', {
-      fontSize: '48px', color: '#fff', fontStyle: 'bold'
+      fontSize: '48px',
+      color: '#fff',
+      fontStyle: 'bold'
     }).setOrigin(0.5)
 
     this.startCountdown()
   }
 
-  // ---------------- COUNTDOWN ----------------
+  // ---------- COUNTDOWN ----------
 
   startCountdown() {
     this.inCountdown = true
     this.countdownValue = 3
-    const label = this.wave % 5 === 0 ? 'BOSS WAVE' : `WAVE ${this.wave}`
-    this.countdownText.setText(`${label}\n${this.countdownValue}`)
+    this.countdownTimer = 0
+    this.countdownText.setText(`WAVE ${this.wave}\n${this.countdownValue}`)
   }
 
   updateCountdown(delta) {
@@ -98,8 +99,7 @@ export default class ArenaScene extends Phaser.Scene {
       this.countdownTimer = 0
       this.countdownValue--
       if (this.countdownValue > 0) {
-        const label = this.wave % 5 === 0 ? 'BOSS WAVE' : `WAVE ${this.wave}`
-        this.countdownText.setText(`${label}\n${this.countdownValue}`)
+        this.countdownText.setText(`WAVE ${this.wave}\n${this.countdownValue}`)
       } else {
         this.countdownText.setText('')
         this.inCountdown = false
@@ -108,7 +108,7 @@ export default class ArenaScene extends Phaser.Scene {
     }
   }
 
-  // ---------------- SPAWN ----------------
+  // ---------- SPAWN ----------
 
   spawnWave() {
     this.enemies.forEach(e => this.destroyEnemy(e))
@@ -126,8 +126,8 @@ export default class ArenaScene extends Phaser.Scene {
 
   spawnEnemy(type) {
     const e = this.add.circle(
-      Phaser.Math.Between(100, 700),
-      Phaser.Math.Between(100, 400),
+      Phaser.Math.Between(120, 680),
+      Phaser.Math.Between(120, 380),
       12,
       type === 'ranged' ? 0x3399ff : 0xff4444
     )
@@ -141,11 +141,10 @@ export default class ArenaScene extends Phaser.Scene {
     e.lastShot = 0
 
     e.hpBar = this.add.rectangle(e.x, e.y - 18, 20, 4, 0xff0000).setOrigin(0.5)
-
     this.enemies.push(e)
   }
 
-  // ---------------- ATTACK ----------------
+  // ---------- ATTACK ----------
 
   tryAttack() {
     if (!this.canAttack || this.inCountdown) return
@@ -196,7 +195,7 @@ export default class ArenaScene extends Phaser.Scene {
     this.enemies = this.enemies.filter(x => x !== e)
   }
 
-  // ---------------- UPDATE ----------------
+  // ---------- UPDATE ----------
 
   update(_, delta) {
     if (this.inCountdown) {
@@ -227,8 +226,8 @@ export default class ArenaScene extends Phaser.Scene {
         const dist = Phaser.Math.Distance.Between(e.x, e.y, this.player.x, this.player.y)
 
         if (dist < 180) {
-          const dx = e.x - this.player.x
-          const dy = e.y - this.player.y
+          const dx = e.body.x - this.player.body.x
+          const dy = e.body.y - this.player.body.y
           const mag = Math.hypot(dx, dy)
           e.body.setVelocity((dx / mag) * e.speed, (dy / mag) * e.speed)
         } else {
@@ -240,7 +239,10 @@ export default class ArenaScene extends Phaser.Scene {
           this.fireProjectile(e)
         }
       } else {
-        this.physics.moveToObject(e, this.player, e.speed)
+        const dx = this.player.body.x - e.body.x
+        const dy = this.player.body.y - e.body.y
+        const mag = Math.hypot(dx, dy)
+        e.body.setVelocity((dx / mag) * e.speed, (dy / mag) * e.speed)
       }
 
       // Sync visuals
@@ -276,8 +278,8 @@ export default class ArenaScene extends Phaser.Scene {
     this.physics.add.existing(p)
 
     const dir = new Phaser.Math.Vector2(
-      this.player.x - e.x,
-      this.player.y - e.y
+      this.player.body.x - e.body.x,
+      this.player.body.y - e.body.y
     ).normalize()
 
     p.body.setVelocity(dir.x * 260, dir.y * 260)
