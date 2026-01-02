@@ -1,29 +1,55 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
-import ArenaGame from '../components/ArenaGame'
-import ArenaLeaderboard from '../components/ArenaLeaderboard'
 
-export default function Arena() {
+export default function ArenaPage() {
+  const gameRef = useRef(null)
+  const containerRef = useRef(null)
+
   const [mode, setMode] = useState('idle')
   const [score, setScore] = useState(null)
-
   const [name, setName] = useState('')
   const [wallet, setWallet] = useState('')
 
+  useEffect(() => {
+    if (mode !== 'playing') return
+
+    let gameInstance
+
+    import('../game/index').then(({ startArenaGame }) => {
+      gameInstance = startArenaGame('arena-container', (finalScore) => {
+        setScore(finalScore)
+        setMode('gameover')
+      })
+      gameRef.current = gameInstance
+    })
+
+    return () => {
+      if (gameRef.current) {
+        gameRef.current.destroy(true)
+        gameRef.current = null
+      }
+    }
+  }, [mode])
+
   async function submitScore() {
-    if (!name || !wallet || score === null) return
+    if (!wallet || score === null) return
 
     await fetch('/api/arena/submit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, wallet, score })
+      body: JSON.stringify({
+        wallet,
+        name,
+        score
+      })
     })
 
+    setMode('idle')
+    setScore(null)
     setName('')
     setWallet('')
-    setScore(null)
-    setMode('idle')
   }
 
   return (
@@ -33,77 +59,69 @@ export default function Arena() {
       <main className="container">
         <section className="hero">
           <h1>MEGAGROK ARENA</h1>
-          <p>Endless waves. Survive.</p>
+          <p>Survive endless waves. Mobile & PC.</p>
         </section>
 
-        <div className="grid-two">
+        {mode === 'idle' && (
           <div className="panel">
-            {mode === 'idle' && (
-              <>
-                <h3>Enter the Arena</h3>
-                <p>
-                  🖥 PC: WASD / Arrows + Space<br />
-                  📱 Mobile: Drag to move, tap to attack
-                </p>
+            <p>
+              🖥 WASD / Arrows + Space<br />
+              📱 Touch = attack (joystick coming next)
+            </p>
 
-                <button
-                  className="cta-primary"
-                  onClick={() => setMode('playing')}
-                >
-                  ▶ START RUN
-                </button>
-              </>
-            )}
-
-            {mode === 'playing' && (
-              <ArenaGame
-                onGameOver={(finalScore) => {
-                  setScore(finalScore)
-                  setMode('gameover')
-                }}
-              />
-            )}
-
-            {mode === 'gameover' && (
-              <>
-                <h3>Game Over</h3>
-                <p>Your Score: <b>{score}</b></p>
-
-                <input
-                  placeholder="Display name"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                />
-                <input
-                  placeholder="Wallet address"
-                  value={wallet}
-                  onChange={e => setWallet(e.target.value)}
-                />
-
-                <button
-                  className="cta-primary"
-                  onClick={submitScore}
-                >
-                  Submit Score
-                </button>
-
-                <button
-                  className="cta-secondary"
-                  onClick={() => {
-                    setScore(null)
-                    setMode('idle')
-                  }}
-                >
-                  Play Again
-                </button>
-              </>
-            )}
+            <button
+              className="cta-primary"
+              onClick={() => setMode('playing')}
+            >
+              ▶ START ARENA
+            </button>
           </div>
+        )}
 
+        {mode === 'playing' && (
+          <div
+            id="arena-container"
+            ref={containerRef}
+            style={{
+              width: '100%',
+              maxWidth: 900,
+              margin: '0 auto'
+            }}
+          />
+        )}
+
+        {mode === 'gameover' && (
           <div className="panel">
-            <ArenaLeaderboard />
+            <h3>Game Over</h3>
+            <p>Your Score: <b>{score}</b></p>
+
+            <input
+              placeholder="Name (optional)"
+              value={name}
+              onChange={e => setName(e.target.value)}
+            />
+
+            <input
+              placeholder="Wallet address"
+              value={wallet}
+              onChange={e => setWallet(e.target.value)}
+            />
+
+            <button
+              className="cta-primary"
+              onClick={submitScore}
+            >
+              Submit Score
+            </button>
+
+            <button
+              className="cta-secondary"
+              onClick={() => setMode('idle')}
+            >
+              Play Again
+            </button>
           </div>
-        </div>
+        )}
       </main>
 
       <Footer />
