@@ -1,8 +1,6 @@
 import { kv } from '@vercel/kv'
 
-export const config = {
-  runtime: 'edge'
-}
+export const runtime = 'edge'
 
 export default async function handler(req) {
   if (req.method !== 'POST') {
@@ -42,10 +40,10 @@ export default async function handler(req) {
 
     return new Response(
       JSON.stringify({ success: true }),
-      { status: 200 }
+      { headers: { 'Content-Type': 'application/json' } }
     )
   } catch (err) {
-    console.error('Submit error:', err)
+    console.error('Submit error', err)
     return new Response(
       JSON.stringify({ error: 'Internal error' }),
       { status: 500 }
