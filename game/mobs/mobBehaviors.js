@@ -2,13 +2,12 @@
 import Phaser from 'phaser'
 
 export function updateMob(scene, mob, player, delta) {
-  // Movement (melee only for now)
   scene.physics.moveToObject(mob, player, mob.speed)
 
   // HP bar follow
   mob.hpBar.setPosition(
     mob.x,
-    mob.y - (mob.size + 8)
+    mob.y - (mob.size + 10)
   )
 
   const maxWidth = mob.size * 1.6
