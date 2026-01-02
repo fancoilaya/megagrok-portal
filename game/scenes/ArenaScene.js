@@ -7,7 +7,7 @@ export default class ArenaScene extends Phaser.Scene {
   }
 
   preload() {
-    // projectile texture (sprite, not shape)
+    // bullet texture (sprite-based, reliable)
     const g = this.add.graphics()
     g.fillStyle(0x66ccff, 1)
     g.fillCircle(4, 4, 4)
@@ -43,10 +43,13 @@ export default class ArenaScene extends Phaser.Scene {
     // UI
     this.ui = this.add.text(10, 10, '', { fontSize: 14, color: '#fff' })
     this.countdownText = this.add.text(
-      400, 250, '', { fontSize: '48px', color: '#fff', fontStyle: 'bold' }
+      400,
+      250,
+      '',
+      { fontSize: '48px', color: '#fff', fontStyle: 'bold' }
     ).setOrigin(0.5)
 
-    // Projectile hits player
+    // Projectile → Player
     this.physics.add.overlap(this.player, this.projectiles, (_, p) => {
       p.destroy()
       this.hp -= 8
@@ -172,7 +175,12 @@ export default class ArenaScene extends Phaser.Scene {
     line.moveTo(this.player.x, this.player.y)
     line.lineTo(closest.x, closest.y)
     line.strokePath()
-    this.tweens.add({ targets: line, alpha: 0, duration: 120, onComplete: () => line.destroy() })
+    this.tweens.add({
+      targets: line,
+      alpha: 0,
+      duration: 120,
+      onComplete: () => line.destroy()
+    })
 
     if (closest.hp <= 0) {
       closest.hpBar.destroy()
@@ -245,12 +253,14 @@ export default class ArenaScene extends Phaser.Scene {
     }
   }
 
-  // ---------------- PROJECTILE ----------------
+  // ---------------- PROJECTILE (FIXED) ----------------
 
   fireProjectile(enemy) {
     const p = this.physics.add.image(enemy.x, enemy.y, 'bullet')
-    p.setCircle(4)
-    p.setCollideWorldBounds(false)
+
+    // 🔒 CRITICAL: explicitly movable
+    p.body.allowGravity = false
+    p.body.immovable = false
 
     const angle = Phaser.Math.Angle.Between(
       enemy.x,
@@ -259,7 +269,12 @@ export default class ArenaScene extends Phaser.Scene {
       this.player.y
     )
 
-    this.physics.velocityFromRotation(angle, 280, p.body.velocity)
+    const speed = 300
+    p.body.setVelocity(
+      Math.cos(angle) * speed,
+      Math.sin(angle) * speed
+    )
+
     this.projectiles.add(p)
 
     this.time.delayedCall(5000, () => {
