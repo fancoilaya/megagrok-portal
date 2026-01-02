@@ -1,10 +1,8 @@
 import { kv } from '@vercel/kv'
 
-export const config = {
-  runtime: 'edge'
-}
+export const runtime = 'edge'
 
-export default async function handler(req) {
+export default async function handler() {
   try {
     const today = new Date().toISOString().slice(0, 10)
     const key = `arena:daily:${today}`
@@ -21,10 +19,10 @@ export default async function handler(req) {
 
     return new Response(
       JSON.stringify({ leaderboard }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
+      { headers: { 'Content-Type': 'application/json' } }
     )
   } catch (err) {
-    console.error('Leaderboard error:', err)
+    console.error('Leaderboard error', err)
     return new Response(
       JSON.stringify({ error: 'Internal error' }),
       { status: 500 }
