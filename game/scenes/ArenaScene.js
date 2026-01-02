@@ -9,7 +9,6 @@ export default class ArenaScene extends Phaser.Scene {
   }
 
   create() {
-    // Enable multitouch
     this.input.addPointer(2)
 
     this.wave = 1
@@ -89,6 +88,26 @@ export default class ArenaScene extends Phaser.Scene {
     this.startCountdown()
   }
 
+  // ---------------- WAVES ----------------
+
+  getWaveConfig(wave) {
+    if (wave % 5 === 0) {
+      return {
+        mobs: [
+          { type: 'tank', count: 1 },
+          { type: 'runner', count: Math.min(2 + Math.floor(wave / 5), 5) }
+        ]
+      }
+    }
+
+    return {
+      mobs: [
+        { type: 'grunt', count: Math.min(3 + wave, 6) },
+        { type: 'runner', count: wave >= 3 ? 1 : 0 }
+      ]
+    }
+  }
+
   startCountdown() {
     this.inCountdown = true
     this.countdown = 3
@@ -114,19 +133,21 @@ export default class ArenaScene extends Phaser.Scene {
   spawnWave() {
     this.enemies.clear(true, true)
 
-    const types = ['grunt', 'runner', 'tank']
-    const count = Math.min(3 + this.wave, 10)
+    const config = this.getWaveConfig(this.wave)
 
-    for (let i = 0; i < count; i++) {
-      const type = Phaser.Utils.Array.GetRandom(types)
-      spawnMob(
-        this,
-        type,
-        Phaser.Math.Between(120, 680),
-        Phaser.Math.Between(120, 380)
-      )
-    }
+    config.mobs.forEach(group => {
+      for (let i = 0; i < group.count; i++) {
+        spawnMob(
+          this,
+          group.type,
+          Phaser.Math.Between(120, 680),
+          Phaser.Math.Between(120, 380)
+        )
+      }
+    })
   }
+
+  // ---------------- ATTACK ----------------
 
   tryAttack() {
     if (!this.canAttack || this.inCountdown) return
@@ -178,6 +199,8 @@ export default class ArenaScene extends Phaser.Scene {
       this.score += 100
     }
   }
+
+  // ---------------- UPDATE ----------------
 
   update(_, delta) {
     if (this.inCountdown) {
