@@ -11,10 +11,10 @@ export default class ArenaScene extends Phaser.Scene {
   create() {
     this.input.addPointer(2)
 
+    // ---- GAME STATE ----
     this.wave = 1
     this.score = 0
     this.playerHp = 100
-
     this.inCountdown = true
     this.countdown = 3
     this.countdownTimer = 0
@@ -22,39 +22,56 @@ export default class ArenaScene extends Phaser.Scene {
     this.attackCooldown = 350
     this.canAttack = true
 
-    // Player
-    this.player = this.add.circle(400, 250, 14, 0xff7a00)
+    // ---- PLAYER ----
+    this.player = this.add.circle(400, 250, 14, 0xff7a00).setDepth(10)
     this.physics.add.existing(this.player)
     this.player.body.setCollideWorldBounds(true)
 
-    // Enemies
+    // ---- ENEMIES ----
     this.enemies = this.physics.add.group()
 
-    // Controls (PC)
+    // ---- PC CONTROLS ----
     this.cursors = this.input.keyboard.createCursorKeys()
     this.keys = this.input.keyboard.addKeys('W,A,S,D,SPACE')
 
-    // UI
-    this.uiText = this.add.text(10, 10, '', { fontSize: 14, color: '#fff' })
-    this.countdownText = this.add.text(
-      400, 250, '',
-      { fontSize: '48px', fontStyle: 'bold', color: '#fff' }
-    ).setOrigin(0.5)
+    // ---- UI ----
+    this.uiText = this.add.text(10, 10, '', {
+      fontSize: '14px',
+      color: '#ffffff'
+    }).setDepth(100)
 
-    // Mobile joystick
-    this.joyBase = this.add.circle(110, 390, 55, 0x000000, 0.35).setScrollFactor(0)
-    this.joyThumb = this.add.circle(110, 390, 28, 0xffffff, 0.6).setScrollFactor(0)
+    this.countdownText = this.add.text(
+      400,
+      250,
+      '',
+      { fontSize: '48px', fontStyle: 'bold', color: '#ffffff' }
+    ).setOrigin(0.5).setDepth(100)
+
+    // ---- MOBILE JOYSTICK ----
+    this.joyBase = this.add.circle(110, 390, 55, 0x000000, 0.35)
+      .setScrollFactor(0)
+      .setDepth(100)
+
+    this.joyThumb = this.add.circle(110, 390, 28, 0xffffff, 0.6)
+      .setScrollFactor(0)
+      .setDepth(101)
+
     this.joyVector = { x: 0, y: 0 }
     this.joyPointerId = null
 
-    // Attack button
+    // ---- ATTACK BUTTON ----
     this.attackBtn = this.add.circle(690, 390, 48, 0xff7a00, 0.9)
       .setScrollFactor(0)
-      .setInteractive()
-    this.add.text(676, 372, '🔥', { fontSize: 34 }).setScrollFactor(0)
+      .setDepth(100)
+      .setInteractive({ useHandCursor: true })
+
+    this.add.text(676, 372, '🔥', {
+      fontSize: '34px'
+    }).setScrollFactor(0).setDepth(101)
+
     this.attackBtn.on('pointerdown', () => this.tryAttack())
 
-    // Touch input
+    // ---- TOUCH INPUT ----
     this.input.on('pointerdown', p => {
       if (p.x < this.scale.width / 2 && this.joyPointerId === null) {
         this.joyPointerId = p.id
@@ -63,6 +80,7 @@ export default class ArenaScene extends Phaser.Scene {
 
     this.input.on('pointermove', p => {
       if (p.id !== this.joyPointerId) return
+
       const dx = p.x - this.joyBase.x
       const dy = p.y - this.joyBase.y
       const dist = Math.min(Math.hypot(dx, dy), 45)
@@ -72,6 +90,7 @@ export default class ArenaScene extends Phaser.Scene {
         this.joyBase.x + Math.cos(angle) * dist,
         this.joyBase.y + Math.sin(angle) * dist
       )
+
       this.joyVector.x = Math.cos(angle) * (dist / 45)
       this.joyVector.y = Math.sin(angle) * (dist / 45)
     })
@@ -88,23 +107,15 @@ export default class ArenaScene extends Phaser.Scene {
     this.startCountdown()
   }
 
-  // ---------------- WAVES ----------------
-
+  // ---- WAVES ----
   getWaveConfig(wave) {
     if (wave % 5 === 0) {
       return {
-        mobs: [
-          { type: 'tank', count: 1 },
-          { type: 'runner', count: Math.min(2 + Math.floor(wave / 5), 5) }
-        ]
+        mobs: [{ type: 'tank', count: 1 }]
       }
     }
-
     return {
-      mobs: [
-        { type: 'grunt', count: Math.min(3 + wave, 6) },
-        { type: 'runner', count: wave >= 3 ? 1 : 0 }
-      ]
+      mobs: [{ type: 'grunt', count: Math.min(3 + wave, 7) }]
     }
   }
 
@@ -115,30 +126,15 @@ export default class ArenaScene extends Phaser.Scene {
     this.countdownText.setText(`WAVE ${this.wave}\n${this.countdown}`)
   }
 
-  updateCountdown(delta) {
-    this.countdownTimer += delta
-    if (this.countdownTimer >= 1000) {
-      this.countdownTimer = 0
-      this.countdown--
-      if (this.countdown > 0) {
-        this.countdownText.setText(`WAVE ${this.wave}\n${this.countdown}`)
-      } else {
-        this.countdownText.setText('')
-        this.inCountdown = false
-        this.spawnWave()
-      }
-    }
-  }
-
   spawnWave() {
     this.enemies.clear(true, true)
-    const config = this.getWaveConfig(this.wave)
+    const cfg = this.getWaveConfig(this.wave)
 
-    config.mobs.forEach(group => {
-      for (let i = 0; i < group.count; i++) {
+    cfg.mobs.forEach(g => {
+      for (let i = 0; i < g.count; i++) {
         spawnMob(
           this,
-          group.type,
+          g.type,
           Phaser.Math.Between(120, 680),
           Phaser.Math.Between(120, 380)
         )
@@ -146,8 +142,7 @@ export default class ArenaScene extends Phaser.Scene {
     })
   }
 
-  // ---------------- ATTACK ----------------
-
+  // ---- ATTACK ----
   tryAttack() {
     if (!this.canAttack || this.inCountdown) return
     this.canAttack = false
@@ -158,19 +153,19 @@ export default class ArenaScene extends Phaser.Scene {
   }
 
   attack() {
-    const list = this.enemies.getChildren()
-    if (!list.length) return
+    const mobs = this.enemies.getChildren()
+    if (!mobs.length) return
 
     let closest = null
     let minDist = Infinity
 
-    list.forEach(e => {
+    mobs.forEach(m => {
       const d = Phaser.Math.Distance.Between(
-        this.player.x, this.player.y, e.x, e.y
+        this.player.x, this.player.y, m.x, m.y
       )
       if (d < minDist) {
         minDist = d
-        closest = e
+        closest = m
       }
     })
 
@@ -179,34 +174,37 @@ export default class ArenaScene extends Phaser.Scene {
     const dmg = Phaser.Math.Between(10, 14)
     closest.hp -= dmg
 
-    // Floating damage number
-    const dmgText = this.add.text(
+    // DAMAGE NUMBER
+    const txt = this.add.text(
       closest.x,
-      closest.y - closest.size - 10,
+      closest.y - closest.size - 16,
       `-${dmg}`,
       {
-        fontSize: '14px',
+        fontSize: '16px',
         color: '#ff4444',
-        fontStyle: 'bold'
+        fontStyle: 'bold',
+        stroke: '#000',
+        strokeThickness: 3
       }
-    ).setOrigin(0.5)
+    ).setOrigin(0.5).setDepth(200)
 
     this.tweens.add({
-      targets: dmgText,
-      y: dmgText.y - 20,
+      targets: txt,
+      y: txt.y - 24,
       alpha: 0,
-      duration: 600,
+      duration: 700,
       ease: 'Cubic.easeOut',
-      onComplete: () => dmgText.destroy()
+      onComplete: () => txt.destroy()
     })
 
-    // Slash visual
-    const g = this.add.graphics()
+    // SLASH LINE
+    const g = this.add.graphics().setDepth(150)
     g.lineStyle(3, 0xffaa00, 1)
     g.beginPath()
     g.moveTo(this.player.x, this.player.y)
     g.lineTo(closest.x, closest.y)
     g.strokePath()
+
     this.tweens.add({
       targets: g,
       alpha: 0,
@@ -221,27 +219,40 @@ export default class ArenaScene extends Phaser.Scene {
     }
   }
 
-  // ---------------- UPDATE ----------------
-
+  // ---- UPDATE LOOP ----
   update(_, delta) {
     if (this.inCountdown) {
       this.player.body.setVelocity(0, 0)
-      this.updateCountdown(delta)
+      this.countdownTimer += delta
+      if (this.countdownTimer >= 1000) {
+        this.countdownTimer = 0
+        this.countdown--
+        if (this.countdown > 0) {
+          this.countdownText.setText(`WAVE ${this.wave}\n${this.countdown}`)
+        } else {
+          this.countdownText.setText('')
+          this.inCountdown = false
+          this.spawnWave()
+        }
+      }
       return
     }
 
+    // Movement
     const speed = 180
     let vx = this.joyVector.x * speed
     let vy = this.joyVector.y * speed
 
-    if (this.cursors.left.isDown || this.keys.A.isDown) vx -= speed
-    if (this.cursors.right.isDown || this.keys.D.isDown) vx += speed
-    if (this.cursors.up.isDown || this.keys.W.isDown) vy -= speed
-    if (this.cursors.down.isDown || this.keys.S.isDown) vy += speed
+    if (this.keys.A.isDown || this.cursors.left.isDown) vx -= speed
+    if (this.keys.D.isDown || this.cursors.right.isDown) vx += speed
+    if (this.keys.W.isDown || this.cursors.up.isDown) vy -= speed
+    if (this.keys.S.isDown || this.cursors.down.isDown) vy += speed
 
     this.player.body.setVelocity(vx, vy)
+
     if (this.keys.SPACE.isDown) this.tryAttack()
 
+    // Enemies
     this.enemies.getChildren().forEach(e => {
       updateMob(this, e, this.player, delta)
       if (
