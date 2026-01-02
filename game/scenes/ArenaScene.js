@@ -23,14 +23,14 @@ export default class ArenaScene extends Phaser.Scene {
     this.physics.add.existing(this.player)
     this.player.body.setCollideWorldBounds(true)
 
-    this.enemies = []
-    this.projectiles = []
+    // Enemies group (Arcade Physics group)
+    this.enemies = this.physics.add.group()
 
     // Controls
     this.cursors = this.input.keyboard.createCursorKeys()
     this.keys = this.input.keyboard.addKeys('W,A,S,D,SPACE')
 
-    // Joystick
+    // Mobile joystick
     this.joystickBase = this.add.circle(90, 410, 35, 0x000000, 0.35).setScrollFactor(0)
     this.joystickThumb = this.add.circle(90, 410, 18, 0xffffff, 0.6).setScrollFactor(0)
     this.joystickVector = { x: 0, y: 0 }
@@ -76,16 +76,14 @@ export default class ArenaScene extends Phaser.Scene {
 
     // UI
     this.ui = this.add.text(10, 10, '', { fontSize: 14, color: '#fff' })
-    this.countdownText = this.add.text(400, 250, '', {
-      fontSize: '48px',
-      color: '#fff',
-      fontStyle: 'bold'
-    }).setOrigin(0.5)
+    this.countdownText = this.add.text(
+      400, 250, '', { fontSize: '48px', color: '#fff', fontStyle: 'bold' }
+    ).setOrigin(0.5)
 
     this.startCountdown()
   }
 
-  // ---------------- COUNTDOWN ----------------
+  // ---------- COUNTDOWN ----------
 
   startCountdown() {
     this.inCountdown = true
@@ -109,43 +107,35 @@ export default class ArenaScene extends Phaser.Scene {
     }
   }
 
-  // ---------------- SPAWN ----------------
+  // ---------- SPAWN ----------
 
   spawnWave() {
-    this.enemies.forEach(e => this.destroyEnemy(e))
-    this.projectiles.forEach(p => p.destroy())
-    this.enemies = []
-    this.projectiles = []
+    this.enemies.clear(true, true)
 
     const count = Math.min(3 + this.wave, 10)
 
     for (let i = 0; i < count; i++) {
-      const type = this.wave >= 3 && Math.random() < 0.35 ? 'ranged' : 'normal'
-      this.spawnEnemy(type)
+      const e = this.add.circle(
+        Phaser.Math.Between(120, 680),
+        Phaser.Math.Between(120, 380),
+        12,
+        0xff4444
+      )
+      this.physics.add.existing(e)
+      e.body.setCollideWorldBounds(true)
+
+      e.hp = 40 + this.wave * this.wave * 4
+      e.maxHp = e.hp
+      e.speed = 80
+
+      e.hpBar = this.add.rectangle(e.x, e.y - 18, 20, 4, 0xff0000)
+        .setOrigin(0.5)
+
+      this.enemies.add(e)
     }
   }
 
-  spawnEnemy(type) {
-    const e = this.add.circle(
-      Phaser.Math.Between(120, 680),
-      Phaser.Math.Between(120, 380),
-      12,
-      type === 'ranged' ? 0x3399ff : 0xff4444
-    )
-    this.physics.add.existing(e)
-    e.body.setCollideWorldBounds(true)
-
-    e.type = type
-    e.hp = 40 + this.wave * this.wave * 4
-    e.maxHp = e.hp
-    e.speed = type === 'ranged' ? 40 : 80
-    e.lastShot = 0
-
-    e.hpBar = this.add.rectangle(e.x, e.y - 18, 20, 4, 0xff0000).setOrigin(0.5)
-    this.enemies.push(e)
-  }
-
-  // ---------------- ATTACK ----------------
+  // ---------- ATTACK ----------
 
   tryAttack() {
     if (!this.canAttack || this.inCountdown) return
@@ -155,10 +145,13 @@ export default class ArenaScene extends Phaser.Scene {
   }
 
   attack() {
+    const enemies = this.enemies.getChildren()
+    if (!enemies.length) return
+
     let closest = null
     let minDist = Infinity
 
-    this.enemies.forEach(e => {
+    enemies.forEach(e => {
       const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, e.x, e.y)
       if (d < minDist) {
         minDist = d
@@ -176,7 +169,6 @@ export default class ArenaScene extends Phaser.Scene {
     line.moveTo(this.player.x, this.player.y)
     line.lineTo(closest.x, closest.y)
     line.strokePath()
-
     this.tweens.add({
       targets: line,
       alpha: 0,
@@ -185,18 +177,13 @@ export default class ArenaScene extends Phaser.Scene {
     })
 
     if (closest.hp <= 0) {
-      this.destroyEnemy(closest)
+      closest.hpBar.destroy()
+      closest.destroy()
       this.score += 100
     }
   }
 
-  destroyEnemy(e) {
-    e.hpBar.destroy()
-    e.destroy()
-    this.enemies = this.enemies.filter(x => x !== e)
-  }
-
-  // ---------------- UPDATE ----------------
+  // ---------- UPDATE ----------
 
   update(_, delta) {
     if (this.inCountdown) {
@@ -219,86 +206,28 @@ export default class ArenaScene extends Phaser.Scene {
 
     if (this.keys.SPACE.isDown) this.tryAttack()
 
-    const now = this.time.now
+    // Enemy movement (THIS IS THE WORKING PART)
+    this.enemies.getChildren().forEach(e => {
+      this.physics.moveToObject(e, this.player, e.speed)
 
-    // Enemies
-    this.enemies.forEach(e => {
-      let dx, dy, mag
-
-      if (e.type === 'ranged') {
-        dx = e.body.x - this.player.body.x
-        dy = e.body.y - this.player.body.y
-        mag = Math.hypot(dx, dy)
-
-        if (mag > 0.001 && mag < 180) {
-          e.body.setVelocity(
-            (dx / mag) * e.speed,
-            (dy / mag) * e.speed
-          )
-        } else {
-          e.body.setVelocity(0, 0)
-        }
-
-        if (now - e.lastShot > 1200) {
-          e.lastShot = now
-          this.fireProjectile(e)
-        }
-      } else {
-        dx = this.player.body.x - e.body.x
-        dy = this.player.body.y - e.body.y
-        mag = Math.hypot(dx, dy)
-
-        if (mag > 0.001) {
-          e.body.setVelocity(
-            (dx / mag) * e.speed,
-            (dy / mag) * e.speed
-          )
-        } else {
-          e.body.setVelocity(0, 0)
-        }
-      }
-
-      // Sync visuals
-      e.x = e.body.x
-      e.y = e.body.y
       e.hpBar.setPosition(e.x, e.y - 18)
       e.hpBar.width = (e.hp / e.maxHp) * 20
-    })
 
-    // Projectiles
-    this.projectiles.forEach(p => {
-      p.x = p.body.x
-      p.y = p.body.y
-
-      if (Phaser.Math.Distance.Between(p.x, p.y, this.player.x, this.player.y) < 14) {
-        this.hp -= 8
-        p.destroy()
+      if (Phaser.Math.Distance.Between(e.x, e.y, this.player.x, this.player.y) < 18) {
+        this.hp -= 0.05 * delta
       }
     })
 
-    this.projectiles = this.projectiles.filter(p => p.active)
-
-    if (this.enemies.length === 0) {
+    if (this.enemies.countActive() === 0) {
       this.wave++
       this.startCountdown()
     }
 
     this.ui.setText(`❤️ ${Math.floor(this.hp)}   🌊 Wave ${this.wave}   🏆 ${this.score}`)
-  }
 
-  fireProjectile(e) {
-    const p = this.add.circle(e.x, e.y, 4, 0x66ccff)
-    this.physics.add.existing(p)
-
-    const dx = this.player.body.x - e.body.x
-    const dy = this.player.body.y - e.body.y
-    const mag = Math.hypot(dx, dy)
-
-    if (mag > 0.001) {
-      p.body.setVelocity((dx / mag) * 260, (dy / mag) * 260)
+    if (this.hp <= 0) {
+      this.onGameOver({ score: this.score, wave: this.wave })
+      this.scene.stop()
     }
-
-    this.projectiles.push(p)
-    this.time.delayedCall(3000, () => p.destroy())
   }
 }
