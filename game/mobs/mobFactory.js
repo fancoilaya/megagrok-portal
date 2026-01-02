@@ -3,27 +3,25 @@ import { MOB_TYPES } from './mobRegistry'
 
 export function spawnMob(scene, typeKey, x, y) {
   const def = MOB_TYPES[typeKey]
+  if (!def) throw new Error(`Unknown mob type: ${typeKey}`)
 
-  const mob = scene.add.circle(
-    x,
-    y,
-    def.size,
-    def.color
-  )
-  mob.setDepth(10) // mobs
+  const mob = scene.add.circle(x, y, def.size, def.color)
+  mob.setDepth(10)
 
   scene.physics.add.existing(mob)
   mob.body.setCollideWorldBounds(true)
 
   mob.type = def.id
-  mob.behavior = def.behavior
   mob.hp = def.hp
   mob.maxHp = def.hp
   mob.speed = def.speed
   mob.damage = def.damage
   mob.size = def.size
+  mob.attackRange = def.attackRange
+  mob.followRange = def.followRange
+  mob.lastAttack = 0
 
-  // HP BAR (ALWAYS ABOVE MOB)
+  // HP bar
   mob.hpBar = scene.add.rectangle(
     mob.x,
     mob.y - (def.size + 10),
@@ -32,7 +30,7 @@ export function spawnMob(scene, typeKey, x, y) {
     0xff0000
   )
   mob.hpBar.setOrigin(0.5)
-  mob.hpBar.setDepth(20) // above mob
+  mob.hpBar.setDepth(20)
 
   scene.enemies.add(mob)
   return mob
