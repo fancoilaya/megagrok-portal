@@ -7,7 +7,6 @@ export function updateMob(scene, mob, player) {
     player.x, player.y
   )
 
-  // Follow player (melee for now)
   if (dist > mob.attackRange) {
     scene.physics.moveToObject(mob, player, mob.speed)
   } else {
