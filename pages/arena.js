@@ -99,7 +99,7 @@ export default function ArenaPage() {
             id="arena-container"
             style={{
               width: '100%',
-              maxWidth: 900,
+              maxWidth: 800,
               height: 500,           // 🔥 CRITICAL — NEVER REMOVE
               margin: '0 auto',
               background: '#000',
