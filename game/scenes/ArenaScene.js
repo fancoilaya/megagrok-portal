@@ -44,17 +44,17 @@ export default class ArenaScene extends Phaser.Scene {
     }).setOrigin(0.5)
 
     // ---------------- MOBILE JOYSTICK ----------------
-    this.joyBase = this.add.circle(90, 410, 35, 0x000000, 0.35).setScrollFactor(0)
-    this.joyThumb = this.add.circle(90, 410, 18, 0xffffff, 0.6).setScrollFactor(0)
+    this.joyBase = this.add.circle(110, 390, 55, 0x000000, 0.35).setScrollFactor(0)
+    this.joyThumb = this.add.circle(110, 390, 28, 0xffffff, 0.6).setScrollFactor(0)
     this.joyVector = { x: 0, y: 0 }
     this.activePointer = null
 
     // ---------------- ATTACK BUTTON ----------------
-    this.attackBtn = this.add.circle(710, 410, 32, 0xff7a00, 0.85)
+    this.attackBtn = this.add.circle(690, 390, 48, 0xff7a00, 0.9)
       .setScrollFactor(0)
       .setInteractive()
 
-    this.add.text(700, 396, '🔥', { fontSize: 26 }).setScrollFactor(0)
+    this.add.text(676, 372, '🔥', { fontSize: 34 }).setScrollFactor(0)
 
     this.attackBtn.on('pointerdown', () => this.tryAttack())
 
@@ -70,7 +70,7 @@ export default class ArenaScene extends Phaser.Scene {
 
       const dx = p.x - this.joyBase.x
       const dy = p.y - this.joyBase.y
-      const dist = Math.min(Math.hypot(dx, dy), 30)
+      const dist = Math.min(Math.hypot(dx, dy), 45)
       const angle = Math.atan2(dy, dx)
 
       this.joyThumb.setPosition(
@@ -78,8 +78,8 @@ export default class ArenaScene extends Phaser.Scene {
         this.joyBase.y + Math.sin(angle) * dist
       )
 
-      this.joyVector.x = Math.cos(angle) * (dist / 30)
-      this.joyVector.y = Math.sin(angle) * (dist / 30)
+      this.joyVector.x = Math.cos(angle) * (dist / 45)
+      this.joyVector.y = Math.sin(angle) * (dist / 45)
     })
 
     this.input.on('pointerup', () => {
@@ -132,7 +132,7 @@ export default class ArenaScene extends Phaser.Scene {
 
     const count = Math.min(3 + this.wave, 10)
     for (let i = 0; i < count; i++) {
-      this.spawnEnemy(false)
+      this.spawnEnemy()
     }
   }
 
@@ -205,7 +205,6 @@ export default class ArenaScene extends Phaser.Scene {
     const dmg = Phaser.Math.Between(10, 14)
     closest.hp -= dmg
 
-    // Slash visual
     const g = this.add.graphics()
     g.lineStyle(3, 0xffaa00, 1)
     g.beginPath()
@@ -236,7 +235,6 @@ export default class ArenaScene extends Phaser.Scene {
       return
     }
 
-    // Player movement
     const speed = 180
     let vx = this.joyVector.x * speed
     let vy = this.joyVector.y * speed
@@ -250,7 +248,6 @@ export default class ArenaScene extends Phaser.Scene {
 
     if (this.keys.SPACE.isDown) this.tryAttack()
 
-    // Enemies
     this.enemies.getChildren().forEach(e => {
       this.physics.moveToObject(e, this.player, e.speed)
 
