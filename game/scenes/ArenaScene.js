@@ -156,7 +156,11 @@ export default class ArenaScene extends Phaser.Scene {
     )
 
     if (this.hp <= 0) {
-      this.onGameOver(this.score)
+      this.onGameOver({
+        score: this.score,
+        wave: this.wave
+      })
+      
       this.scene.stop()
     }
   }
