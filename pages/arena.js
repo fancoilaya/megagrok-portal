@@ -91,6 +91,7 @@ export default function ArenaPage() {
           />
         )}
 
+        {mode !== 'playing' && <ArenaLeaderboard />}
         {mode === 'gameover' && (
           <div className="panel">
             <h3>Game Over</h3>
